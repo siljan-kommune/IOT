@@ -123,7 +123,7 @@ function updLabel(temp) {
 async function fetchTemp() {
     try {
         const resp = await fetch(
-            SUPA_URL + '/rest/v1/badetemperatur?order=rapportert.desc&limit=1', {
+            SUPA_URL + '/rest/v1/badetemperatur?temperatur=neq.96&order=rapportert.desc&limit=1', {
                 headers: { 'apikey': SUPA_ANON, 'Authorization': 'Bearer ' + SUPA_ANON }
             });
         const data = await resp.json();
