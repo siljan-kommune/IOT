@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920">
+  <title>Solceller – Siljan kommune</title>
+  <style>
+    :root {
+      --bg:          #080d18;
+      --card:        #0f1829;
+      --card-border: #1e3a5f;
+      --yellow:      #f5a623;
+      --green:       #22c55e;
+      --green-dim:   #14532d;
+      --text:        #f1f5f9;
+      --muted:       #64748b;
+      --accent:      #38bdf8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+    .screen { width: 1920px; height: 1080px; display: grid; grid-template-rows: 100px 1fr 140px 100px; }
+
+    /* ── HEADER ─────────────────────────────────────────────── */
+    header { display: flex; align-items: center; justify-content: space-between; padding: 0 60px; border-bottom: 1px solid var(--card-border); background: linear-gradient(180deg, #0a1628 0%, transparent 100%); }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .logo-icon   { font-size: 42px; }
+    .site-name   { font-size: 30px; font-weight: 700; }
+    .site-sub    { font-size: 16px; color: var(--muted); margin-top: 2px; }
+    .header-title { font-size: 48px; font-weight: 700; color: var(--yellow); letter-spacing: 0.04em; }
+    .header-clock { text-align: right; }
+    .clock-time { font-size: 52px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+    .clock-date { font-size: 18px; color: var(--muted); margin-top: 4px; text-transform: capitalize; }
+
+    /* ── MAIN ───────────────────────────────────────────────── */
+    main { display: grid; grid-template-columns: 640px 1fr; padding: 40px 60px; align-items: center; }
+    .solar-display { display: flex; flex-direction: column; align-items: center; gap: 28px; }
+    .sun-wrapper { position: relative; width: 280px; height: 280px; display: flex; align-items: center; justify-content: center; }
+    .sun-glow { position: absolute; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle, rgba(245,166,35,0.25) 0%, transparent 70%); }
+    .sun-glow.active { animation: pulse-glow 3s ease-in-out infinite; }
+    @keyframes pulse-glow { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.3); opacity: 1; } }
+    .sun-circle { position: relative; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffe066, #f5a623 60%, #c47a12); box-shadow: 0 0 40px rgba(245,166,35,0.6); z-index: 2; transition: box-shadow 1s, filter 1s; }
+    .sun-circle.inactive { background: radial-gradient(circle at 35% 35%, #3a3a3a, #222 60%, #111); box-shadow: 0 0 10px rgba(0,0,0,0.5); filter: grayscale(1); }
+    .sun-rays { position: absolute; width: 280px; height: 280px; z-index: 1; }
+    .sun-rays.spinning { animation: spin 20s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .ray { position: absolute; width: 8px; border-radius: 4px; background: linear-gradient(to top, rgba(245,166,35,0.8), transparent); left: 50%; transform-origin: bottom center; transition: opacity 1s; }
+    .ray.inactive { opacity: 0; }
+    .ray:nth-child(1)  { height: 50px; top: 10px; margin-left: -4px; transform: rotate(0deg)   translateY(-75px); }
+    .ray:nth-child(2)  { height: 40px; top: 10px; margin-left: -4px; transform: rotate(30deg)  translateY(-75px); }
+    .ray:nth-child(3)  { height: 50px; top: 10px; margin-left: -4px; transform: rotate(60deg)  translateY(-75px); }
+    .ray:nth-child(4)  { height: 40px; top: 10px; margin-left: -4px; transform: rotate(90deg)  translateY(-75px); }
+    .ray:nth-child(5)  { height: 50px; top: 10px; margin-left: -4px; transform: rotate(120deg) translateY(-75px); }
+    .ray:nth-child(6)  { height: 40px; top: 10px; margin-left: -4px; transform: rotate(150deg) translateY(-75px); }
+    .ray:nth-child(7)  { height: 50px; top: 10px; margin-left: -4px; transform: rotate(180deg) translateY(-75px); }
+    .ray:nth-child(8)  { height: 40px; top: 10px; margin-left: -4px; transform: rotate(210deg) translateY(-75px); }
+    .ray:nth-child(9)  { height: 50px; top: 10px; margin-left: -4px; transform: rotate(240deg) translateY(-75px); }
+    .ray:nth-child(10) { height: 40px; top: 10px; margin-left: -4px; transform: rotate(270deg) translateY(-75px); }
+    .ray:nth-child(11) { height: 50px; top: 10px; margin-left: -4px; transform: rotate(300deg) translateY(-75px); }
+    .ray:nth-child(12) { height: 40px; top: 10px; margin-left: -4px; transform: rotate(330deg) translateY(-75px); }
+    .power-now { text-align: center; }
+    .power-value { font-size: 96px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; color: var(--yellow); text-shadow: 0 0 30px rgba(245,166,35,0.5); transition: color 1s, text-shadow 1s; }
+    .power-value.inactive { color: var(--muted); text-shadow: none; }
+    .power-unit  { font-size: 36px; font-weight: 400; color: var(--muted); margin-left: 8px; }
+    .power-label { font-size: 22px; color: var(--muted); margin-top: 8px; letter-spacing: 0.1em; text-transform: uppercase; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 24px; height: 100%; align-content: center; }
+    .stat-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 20px; padding: 32px 40px; display: flex; flex-direction: column; justify-content: space-between; }
+    .stat-card.highlight { border-color: var(--green-dim); background: linear-gradient(135deg, #0f1829 0%, #0c2010 100%); }
+    .stat-label { font-size: 18px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; }
+    .stat-value { font-size: 54px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); line-height: 1.1; }
+    .stat-sub   { font-size: 20px; color: var(--green); font-weight: 600; margin-top: 6px; }
+    .stat-sub.neutral { color: var(--accent); }
+
+    /* ── ANLEGG-STRIP ────────────────────────────────────────── */
+    .bygg-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; padding: 0 60px; align-items: center; }
+    .bygg-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .bygg-name { font-size: 17px; font-weight: 600; color: var(--text); }
+    .bygg-addr { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .bygg-kw   { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--yellow); }
+    .bygg-kw.inactive { color: var(--muted); }
+    .bygg-kwlabel { font-size: 14px; color: var(--muted); text-align: right; margin-top: 2px; }
+
+    /* ── FOOTER ─────────────────────────────────────────────── */
+    footer { display: flex; align-items: center; justify-content: space-between; padding: 0 60px; border-top: 1px solid var(--card-border); background: linear-gradient(0deg, #0a1628 0%, transparent 100%); }
+    .footer-left { display: flex; align-items: center; gap: 16px; }
+    .status-dot  { width: 12px; height: 12px; border-radius: 50%; background: var(--green); animation: blink 2s ease-in-out infinite; }
+    .status-dot.error { background: #ef4444; animation: none; }
+    .status-dot.stale { background: #f59e0b; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .status-text  { font-size: 18px; color: var(--muted); }
+    .footer-right { font-size: 16px; color: var(--muted); }
+    .error-banner { display: none; position: fixed; bottom: 110px; left: 60px; right: 60px; background: rgba(239,68,68,0.15); border: 1px solid #ef4444; border-radius: 12px; padding: 16px 24px; font-size: 18px; color: #fca5a5; }
+  </style>
+</head>
+<body>
+<div class="screen">
+
+  <header>
+    <div class="header-left">
+      <div class="logo-icon">🏙️</div>
+      <div>
+        <div class="site-name">Siljan kommune</div>
+        <div class="site-sub">4 solcelleanlegg – samlet produksjon</div>
+      </div>
+    </div>
+    <div class="header-title">Solcelle produksjon</div>
+    <div class="header-clock">
+      <div class="clock-time" id="clock-time">--:--</div>
+      <div class="clock-date" id="clock-date">--</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="solar-display">
+      <div class="sun-wrapper">
+        <div class="sun-glow" id="sun-glow"></div>
+        <div class="sun-rays spinning" id="sun-rays">
+          <div class="ray"></div><div class="ray"></div><div class="ray"></div>
+          <div class="ray"></div><div class="ray"></div><div class="ray"></div>
+          <div class="ray"></div><div class="ray"></div><div class="ray"></div>
+          <div class="ray"></div><div class="ray"></div><div class="ray"></div>
+        </div>
+        <div class="sun-circle" id="sun-circle"></div>
+      </div>
+      <div class="power-now">
+        <div class="power-value inactive" id="power-value">--<span class="power-unit">kW</span></div>
+        <div class="power-label" id="power-label">Henter data...</div>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card highlight">
+        <div class="stat-label">I dag</div>
+        <div>
+          <div class="stat-value" id="stat-today">-- kWh</div>
+          <div class="stat-sub" id="stat-today-kr">= -- kr spart</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Denne måneden</div>
+        <div>
+          <div class="stat-value" id="stat-month">-- kWh</div>
+          <div class="stat-sub neutral" id="stat-month-kr">= -- kr spart</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Hittil i år</div>
+        <div>
+          <div class="stat-value" id="stat-year">-- kWh</div>
+          <div class="stat-sub neutral" id="stat-year-kr">= -- kr spart</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Totalt produsert</div>
+        <div>
+          <div class="stat-value" id="stat-total">-- kWh</div>
+          <div class="stat-sub neutral" id="stat-total-kr">= -- kr spart</div>
+          <div class="stat-sub neutral" id="stat-total-tonn" style="font-size:18px;margin-top:4px;">= -- tonn CO₂ spart</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Per-anlegg strip -->
+  <div class="bygg-strip">
+    <div class="bygg-card">
+      <div>
+        <div class="bygg-name">Siljan sykehjem</div>
+        <div class="bygg-addr">Sentrumsveien 54</div>
+      </div>
+      <div style="text-align:right">
+        <div class="bygg-kw inactive" id="bygg-sykehjem-kw">--</div>
+        <div class="bygg-kwlabel">kW nå</div>
+      </div>
+    </div>
+    <div class="bygg-card">
+      <div>
+        <div class="bygg-name">Renseanlegg</div>
+        <div class="bygg-addr">Sentrumsveien 53</div>
+      </div>
+      <div style="text-align:right">
+        <div class="bygg-kw inactive" id="bygg-renseanlegg-kw">--</div>
+        <div class="bygg-kwlabel">kW nå</div>
+      </div>
+    </div>
+    <div class="bygg-card">
+      <div>
+        <div class="bygg-name">Midtbygda skole</div>
+        <div class="bygg-addr">Loppedåpane 53</div>
+      </div>
+      <div style="text-align:right">
+        <div class="bygg-kw inactive" id="bygg-skole-kw">--</div>
+        <div class="bygg-kwlabel">kW nå</div>
+      </div>
+    </div>
+    <div class="bygg-card">
+      <div>
+        <div class="bygg-name">Loppedåpan barnehage</div>
+        <div class="bygg-addr">Loppedåpane 59</div>
+      </div>
+      <div style="text-align:right">
+        <div class="bygg-kw inactive" id="bygg-barnehage-kw">--</div>
+        <div class="bygg-kwlabel">kW nå</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-left">
+      <div class="status-dot" id="status-dot"></div>
+      <div class="status-text" id="status-text">Kobler til...</div>
+    </div>
+    <div class="footer-right" id="footer-updated">–</div>
+  </footer>
+</div>
+<div class="error-banner" id="error-banner"></div>
+
+<script>
+  const SUPABASE_URL  = 'https://fdqjiubwnohtucpercro.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkcWppdWJ3bm9odHVjcGVyY3JvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzMwOTAsImV4cCI6MjA4OTkwOTA5MH0.31n5oId96UEOB7Hf-rSCJ_DG57SNWNPJfeiCFDbW_vQ';
+  const KR_PER_KWH     = 2.0;
+  const CO2_KG_PER_KWH = 0.017;
+  const POLL_MS        = 60000;
+  const HEADERS = { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON };
+
+  const TABLES = [
+    { id: 'sykehjem',    table: 'solar_sykehjem'    },
+    { id: 'renseanlegg', table: 'solar_renseanlegg'  },
+    { id: 'skole',       table: 'solar_skole'        },
+    { id: 'barnehage',   table: 'solar_barnehage'    },
+  ];
+
+  // ── Klokke ────────────────────────────────────────────────────
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock-time').textContent =
+      now.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('clock-date').textContent =
+      now.toLocaleDateString('no-NO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+  setInterval(updateClock, 1000); updateClock();
+
+  // ── Formatering ───────────────────────────────────────────────
+  function fmtKwh(v) {
+    const n = Number(v);
+    if (n >= 1000) return (n/1000).toLocaleString('no-NO', {minimumFractionDigits:1, maximumFractionDigits:1}) + ' MWh';
+    return n.toLocaleString('no-NO', {minimumFractionDigits:1, maximumFractionDigits:1}) + ' kWh';
+  }
+  function fmtKr(kwh)  { return '= ' + Math.round(Number(kwh)*KR_PER_KWH).toLocaleString('no-NO') + ' kr spart'; }
+  function fmtCO2(kwh) { return '≈ ' + ((Number(kwh)*CO2_KG_PER_KWH)/1000).toFixed(2) + ' tonn CO₂ spart'; }
+
+  // ── Sol-animasjon ─────────────────────────────────────────────
+  function setSolarActive(active) {
+    document.getElementById('sun-glow').classList.toggle('active', active);
+    document.getElementById('sun-rays').classList.toggle('spinning', active);
+    document.getElementById('sun-circle').classList.toggle('inactive', !active);
+    document.getElementById('power-value').classList.toggle('inactive', !active);
+    document.querySelectorAll('.ray').forEach(r => r.classList.toggle('inactive', !active));
+  }
+
+  // ── Oppdater UI ───────────────────────────────────────────────
+  function updateUI(rows) {
+    let totalW = 0, totalToday = 0, totalMonth = 0, totalYear = 0, totalAll = 0;
+    let newestTs = null;
+
+    rows.forEach(({ id, data }) => {
+      if (!data) return;
+      const w     = Number(data.power_now_w      || 0);
+      const today = Number(data.energy_today_kwh || 0);
+      const month = Number(data.energy_month_kwh || 0);
+      const year  = Number(data.energy_year_kwh  || 0);
+      const total = Number(data.energy_total_kwh || 0);
+
+      totalW     += w;
+      totalToday += today;
+      totalMonth += month;
+      totalYear  += year;
+      totalAll   += total;
+
+      // Per-bygg kW-visning
+      const el = document.getElementById('bygg-' + id + '-kw');
+      if (el) {
+        el.textContent = (w / 1000).toFixed(1);
+        el.classList.toggle('inactive', w <= 50);
+      }
+
+      // Finn nyeste timestamp på tvers av alle anlegg
+      if (data.updated_at) {
+        const ts = new Date(data.updated_at);
+        if (!newestTs || ts > newestTs) newestTs = ts;
+      }
+    });
+
+    const active = totalW > 50;
+    setSolarActive(active);
+
+    const totalKw = totalW / 1000;
+    document.getElementById('power-value').innerHTML =
+      totalKw.toFixed(1) + '<span class="power-unit">kW</span>';
+    document.getElementById('power-label').textContent =
+      active ? 'samlet produksjon nå' : 'ingen produksjon';
+
+    document.getElementById('stat-today').textContent      = fmtKwh(totalToday);
+    document.getElementById('stat-today-kr').textContent   = fmtKr(totalToday);
+    document.getElementById('stat-month').textContent      = fmtKwh(totalMonth);
+    document.getElementById('stat-month-kr').textContent   = fmtKr(totalMonth);
+    document.getElementById('stat-year').textContent       = fmtKwh(totalYear);
+    document.getElementById('stat-year-kr').textContent    = fmtKr(totalYear);
+    document.getElementById('stat-total').textContent      = fmtKwh(totalAll);
+    document.getElementById('stat-total-kr').textContent   = fmtKr(totalAll);
+    document.getElementById('stat-total-tonn').textContent = fmtCO2(totalAll);
+
+    if (newestTs) {
+      const diff = Math.round((Date.now() - newestTs.getTime()) / 60000);
+      document.getElementById('footer-updated').textContent =
+        'Sist oppdatert: ' + (diff <= 1 ? 'akkurat nå' : diff + ' min siden');
+      if (diff > 20) {
+        document.getElementById('status-dot').className = 'status-dot stale';
+        document.getElementById('status-text').textContent = 'Data kan være utdatert';
+      }
+    }
+  }
+
+  // ── Hent data fra alle 4 tabeller parallelt ───────────────────
+  async function fetchData() {
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-text');
+    const err = document.getElementById('error-banner');
+    try {
+      const results = await Promise.all(
+        TABLES.map(({ id, table }) =>
+          fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.1&select=*', { headers: HEADERS })
+            .then(r => { if (!r.ok) throw new Error(table + ' HTTP ' + r.status); return r.json(); })
+            .then(rows => ({ id, data: rows[0] || null }))
+        )
+      );
+      updateUI(results);
+      dot.className = 'status-dot';
+      txt.textContent = 'Tilkoblet – 4 anlegg · oppdateres hvert minutt';
+      err.style.display = 'none';
+    } catch(e) {
+      dot.className = 'status-dot error';
+      txt.textContent = 'Tilkoblingsfeil';
+      err.style.display = 'block';
+      err.textContent = 'Feil: ' + e.message;
+    }
+  }
+
+  fetchData();
+  setInterval(fetchData, POLL_MS);
+</script>
+</body>
+</html>
