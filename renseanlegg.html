@@ -344,7 +344,7 @@
       if (!rows.length) throw new Error('Ingen data');
       updateUI(rows[0]);
       dot.className = 'status-dot';
-      txt.textContent = 'Tilkoblet – oppdateres hvert minutt';
+      txt.textContent = 'Tilkoblet – data oppdateres hvert 10. minutt';
       err.style.display = 'none';
     } catch (e) {
       dot.className = 'status-dot error';

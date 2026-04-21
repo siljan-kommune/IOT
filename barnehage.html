@@ -208,7 +208,7 @@
       const rows = await res.json();
       if(!rows.length) throw new Error('Ingen data');
       updateUI(rows[0]);
-      dot.className='status-dot'; txt.textContent='Tilkoblet – oppdateres hvert minutt'; err.style.display='none';
+      dot.className='status-dot'; txt.textContent='Tilkoblet – data oppdateres hvert 10. minutt'; err.style.display='none';
     } catch(e) {
       dot.className='status-dot error'; txt.textContent='Tilkoblingsfeil';
       err.style.display='block'; err.textContent='Feil: '+e.message;
