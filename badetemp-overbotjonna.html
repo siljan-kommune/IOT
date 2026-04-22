@@ -316,7 +316,13 @@ async function fetchLast() {
     }
 }
 
-// --- BLE: les temperatur ---
+// --- BLE: les temperatur fra enhetsnavn ---
+
+function parseTempFromName(name) {
+    // "Tjønna 25.5°C" -> 25.5
+    const match = name.match(/Tj[øo]nna\s+([-\d.]+)/);
+    return match ? parseFloat(match[1]) : null;
+}
 
 async function readTemperature() {
     const btn = document.getElementById('readBtn');
@@ -330,28 +336,21 @@ async function readTemperature() {
 
     try {
         const device = await navigator.bluetooth.requestDevice({
-            filters: [{ services: [ESS_UUID] }],
-            optionalServices: [ESS_UUID]
+            filters: [{ namePrefix: 'Tj' }]
         });
 
-        status.textContent = 'Kobler til ' + (device.name || 'sensor') + '...';
-        const server = await device.gatt.connect();
+        const temp = parseTempFromName(device.name);
+        if (temp === null) {
+            error.textContent = 'Kunne ikke lese temperatur fra sensor.';
+            btn.disabled = false;
+            return;
+        }
 
-        status.textContent = 'Leser temperatur...';
-        const service = await server.getPrimaryService(ESS_UUID);
-        const char = await service.getCharacteristic(TEMP_UUID);
-        const value = await char.readValue();
-
-        const raw = value.getInt16(0, true);
-        const temp = raw / 100;
         const timeStr = 'kl. ' + new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
-
         showTemp(temp, timeStr, 'ble');
 
-        server.disconnect();
-
         // Usynlig push til Supabase
-        pushToSupa(device.name || 'ukjent', temp);
+        pushToSupa('overbotjonna', temp);
 
     } catch (err) {
         if (err.name === 'NotFoundError') {
