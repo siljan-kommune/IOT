@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roborock — Biblioteket</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      color: white;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 { font-size: 1.3rem; font-weight: 600; }
+    header span { font-size: 0.8rem; opacity: 0.6; }
+    .header-img {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+    }
+
+    #last-updated {
+      font-size: 0.75rem;
+      opacity: 0.7;
+      text-align: right;
+    }
+
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      display: grid;
+      gap: 20px;
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    @media (max-width: 700px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+
+    .card.full-width { grid-column: 1 / -1; }
+
+    .card h2 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #888;
+      margin-bottom: 20px;
+    }
+
+    /* Hoveddrift */
+    .status-big {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-text {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    /* Batteri */
+    .battery-wrap {
+      margin-top: 14px;
+    }
+
+    .battery-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+      color: #555;
+    }
+
+    .battery-bar {
+      height: 12px;
+      background: #e0e0e0;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .battery-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.5s;
+    }
+
+    /* Rader med info */
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 1.15rem;
+    }
+
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: #666; }
+    .info-value { font-weight: 600; }
+
+    /* Vedlikehold */
+    .maint-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 0.88rem;
+    }
+
+    .maint-item:last-child { margin-bottom: 0; }
+    .maint-ok { background: #e8f5e9; color: #2e7d32; }
+    .maint-warn { background: #ffebee; color: #c62828; }
+
+    .maint-item span:last-child { font-weight: 700; }
+
+    /* Sensorer grid */
+    .sensor-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .sensor-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 1rem;
+    }
+
+    .sensor-ok { background: #e8f5e9; color: #2e7d32; }
+    .sensor-warn { background: #ffebee; color: #c62828; }
+    .sensor-neutral { background: #f5f5f5; color: #555; }
+
+    .sensor-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-green { background: #43a047; }
+    .dot-red { background: #e53935; }
+    .dot-grey { background: #bbb; }
+
+    /* Visuell gauge-rad */
+    .gauge-row {
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-end;
+      gap: 16px;
+      padding: 10px 0 4px;
+      flex-wrap: wrap;
+    }
+
+    .gauge-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .gauge-label {
+      font-size: 0.95rem;
+      color: #555;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .gauge-value {
+      font-size: 1rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    /* Feil-banner */
+    .error-banner {
+      background: #ffebee;
+      border-left: 4px solid #e53935;
+      border-radius: 8px;
+      padding: 14px 16px;
+      color: #c62828;
+      font-weight: 600;
+      display: none;
+    }
+
+    .error-banner.visible { display: block; }
+
+    /* Laster */
+    #loading {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px;
+      color: #888;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <img src="roborock.png" alt="Roborock" class="header-img">
+    <h1>Roborock Qrevo S — Biblioteket</h1>
+  </div>
+  <div id="last-updated">Henter data...</div>
+</header>
+
+<main id="main">
+  <div id="loading">Laster status...</div>
+</main>
+
+<script>
+const SUPA_URL = "https://fdqjiubwnohtucpercro.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkcWppdWJ3bm9odHVjcGVyY3JvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzMwOTAsImV4cCI6MjA4OTkwOTA5MH0.31n5oId96UEOB7Hf-rSCJ_DG57SNWNPJfeiCFDbW_vQ";
+
+const VACUUM_LABELS = {
+  docked: "Parkert i ladestasjon",
+  cleaning: "Vasker",
+  charging: "Lader",
+  returning: "Returnerer",
+  idle: "Inaktiv",
+  paused: "Pauset",
+  error: "FEIL",
+};
+
+const STATUS_LABELS = {
+  charging: "Lader",
+  docked: "Parkert",
+  cleaning: "Rengjør",
+  returning: "Returnerer",
+  idle: "Venter",
+  paused: "Pauset",
+};
+
+function vacuumColor(state) {
+  if (state === "cleaning") return "#43a047";
+  if (state === "error") return "#e53935";
+  if (state === "docked" || state === "charging") return "#43a047";
+  return "#888";
+}
+
+function batteryColor(pct) {
+  if (pct >= 60) return "#43a047";
+  if (pct >= 30) return "#fb8c00";
+  return "#e53935";
+}
+
+function formatDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}.${mm} kl. ${hh}:${min}`;
+}
+
+function formatHours(h) {
+  if (h === null || h === undefined) return "—";
+  const abs = Math.abs(h);
+  const days = Math.floor(abs / 24);
+  const hrs = Math.round(abs % 24);
+  let str = days > 0 ? `${days}d ${hrs}t` : `${hrs}t`;
+  return h < 0 ? `Utløpt (${str} siden)` : `${str} igjen`;
+}
+
+function maintClass(h) {
+  return h !== null && h < 0 ? "maint-warn" : "maint-ok";
+}
+
+function nextRun() {
+  const scheduleDays = [0, 3]; // Søndag=0, Onsdag=3
+  const scheduleHour = 22;
+  const now = new Date();
+  const today = now.getDay();
+  const hour = now.getHours();
+
+  let minDays = 8;
+  for (const day of scheduleDays) {
+    let diff = day - today;
+    if (diff < 0) diff += 7;
+    if (diff === 0 && hour >= scheduleHour) diff = 7;
+    if (diff < minDays) minDays = diff;
+  }
+
+  const next = new Date(now);
+  next.setDate(now.getDate() + minDays);
+  next.setHours(scheduleHour, 0, 0, 0);
+
+  const dayNames = ["søndag", "mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag"];
+  const dd = String(next.getDate()).padStart(2, "0");
+  const mm = String(next.getMonth() + 1).padStart(2, "0");
+
+  if (minDays === 0) return `I dag kl. ${scheduleHour}:00`;
+  if (minDays === 1) return `I morgen kl. ${scheduleHour}:00`;
+  return `${dayNames[next.getDay()].charAt(0).toUpperCase() + dayNames[next.getDay()].slice(1)} ${dd}.${mm} kl. ${scheduleHour}:00`;
+}
+
+function batteryGauge(pct, isCharging, vacuumState) {
+  const color = pct >= 60 ? "#43a047" : pct >= 30 ? "#fb8c00" : "#e53935";
+  const fill = Math.max(2, Math.round(pct * 0.88));
+  let statusText;
+  if (vacuumState === "cleaning") statusText = "OK — Aktiv";
+  else if (isCharging) statusText = "OK — Lader";
+  else if (vacuumState === "docked") statusText = "OK — Fulladet";
+  else if (pct < 30) statusText = "Kritisk lavt";
+  else if (pct < 60) statusText = "Lavt";
+  else statusText = "OK";
+  return `
+  <div class="gauge-item">
+    <svg width="160" height="70" viewBox="0 0 110 52">
+      <rect x="1" y="1" width="96" height="50" rx="7" ry="7"
+            fill="white" stroke="#ccc" stroke-width="2"/>
+      <rect x="97" y="17" width="12" height="18" rx="3" ry="3" fill="#aaa"/>
+      <clipPath id="bat-clip">
+        <rect x="3" y="3" width="92" height="46" rx="5" ry="5"/>
+      </clipPath>
+      <rect x="3" y="3" width="${fill}" height="46" rx="5" ry="5"
+            fill="${color}" clip-path="url(#bat-clip)" opacity="0.9"/>
+      <text x="50" y="33" text-anchor="middle" font-size="16"
+            font-weight="700" fill="${pct < 50 ? '#333' : 'white'}"
+            font-family="Segoe UI, sans-serif">${pct}%</text>
+    </svg>
+    <div class="gauge-label">Batteri</div>
+    <div class="gauge-value" style="color:${color}">${statusText}</div>
+  </div>`;
+}
+
+function tankGauge(label, isEmpty, isFull, isClean) {
+  const warn = isClean ? isEmpty : isFull;
+  const fillPct = warn ? (isClean ? 0 : 100) : (isClean ? 75 : 25);
+  const fillColor = warn ? "#e53935" : (isClean ? "#1e88e5" : "#8d6e63");
+  const fillY = 8 + Math.round((1 - fillPct / 100) * 84);
+  const fillH = Math.round((fillPct / 100) * 84);
+  const statusText = warn ? (isClean ? "Tom!" : "Full!") : "OK";
+  const statusColor = warn ? "#e53935" : "#43a047";
+  const icon = warn ? "⚠️" : (isClean ? "💧" : "🗑️");
+  return `
+  <div class="gauge-item">
+    <svg width="100" height="155" viewBox="0 0 70 110">
+      <rect x="5" y="5" width="60" height="95" rx="10" ry="10"
+            fill="white" stroke="#ccc" stroke-width="2"/>
+      <clipPath id="tank-clip-${label}">
+        <rect x="7" y="7" width="56" height="91" rx="8" ry="8"/>
+      </clipPath>
+      <rect x="7" y="${fillY}" width="56" height="${fillH}"
+            fill="${fillColor}" opacity="0.75"
+            clip-path="url(#tank-clip-${label})"/>
+      <text x="35" y="32" text-anchor="middle" font-size="18">${icon}</text>
+      <text x="35" y="70" text-anchor="middle" font-size="13"
+            font-weight="700" fill="#333"
+            font-family="Segoe UI, sans-serif">${isClean ? (isEmpty ? "Tom" : "OK") : (isFull ? "Full" : "OK")}</text>
+    </svg>
+    <div class="gauge-label">${isClean ? "Vannbeholder" : "Skittenvann"}</div>
+    <div class="gauge-value" style="color:${statusColor}">${statusText}</div>
+  </div>`;
+}
+
+function sensorRow(label, value, warnWhen) {
+  const isWarn = value === warnWhen;
+  const cls = isWarn ? "sensor-warn" : "sensor-ok";
+  const dot = isWarn ? "dot-red" : "dot-green";
+  const text = value ? "Ja" : "Nei";
+  return `
+    <div class="sensor-item ${cls}">
+      <span class="sensor-dot ${dot}"></span>
+      <span>${label}: <strong>${text}</strong></span>
+    </div>`;
+}
+
+function errorRow(label, value, okValues) {
+  const isOk = !value || okValues.includes(value.toLowerCase());
+  const cls = isOk ? "sensor-ok" : "sensor-warn";
+  const dot = isOk ? "dot-green" : "dot-red";
+  const text = isOk ? "Ingen feil" : value;
+  return `
+    <div class="sensor-item ${cls}">
+      <span class="sensor-dot ${dot}"></span>
+      <span>${label}: <strong>${text}</strong></span>
+    </div>`;
+}
+
+async function load() {
+  const res = await fetch(`${SUPA_URL}/rest/v1/biblioteket_roborock_status?select=*&limit=1`, {
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }
+  });
+  const [d] = await res.json();
+
+  document.getElementById("last-updated").innerHTML =
+    `Oppdatert: ${formatDate(d.updated_at)}`;
+
+  const hasError = d.vacuum_error && d.vacuum_error !== "none"
+    || d.dock_error && d.dock_error !== "ok";
+
+  const battery = d.battery ?? 0;
+  const vLabel = VACUUM_LABELS[d.vacuum_state] ?? d.vacuum_state ?? "—";
+  const vColor = vacuumColor(d.vacuum_state);
+
+  document.getElementById("main").innerHTML = `
+
+    ${hasError ? `
+    <div class="card full-width error-banner visible">
+      ⚠️ Feil registrert —
+      ${d.vacuum_error !== "none" ? `Støvsuger: ${d.vacuum_error}` : ""}
+      ${d.dock_error !== "ok" ? `Dokk: ${d.dock_error}` : ""}
+    </div>` : ""}
+
+    <!-- Hoveddrift -->
+    <div class="card">
+      <h2>Status</h2>
+      <div class="status-big">
+        <span class="status-dot" style="background:${vColor}"></span>
+        <span class="status-text" style="color:${vColor}">${vLabel}</span>
+      </div>
+      <div class="info-row" style="margin-top:14px; font-size:1.05rem;">
+        <span class="info-label">Neste kjøring</span>
+        <span class="info-value">${nextRun()}</span>
+      </div>
+      <div class="battery-wrap">
+        <div class="battery-label">
+          <span>Batteri</span>
+          <span>${battery}%</span>
+        </div>
+        <div class="battery-bar">
+          <div class="battery-fill" style="width:${battery}%; background:${batteryColor(battery)}"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Siste runde -->
+    <div class="card">
+      <h2>Siste rengjøring</h2>
+      <div class="info-row">
+        <span class="info-label">Start</span>
+        <span class="info-value">${formatDate(d.last_clean_begin)}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Slutt</span>
+        <span class="info-value">${formatDate(d.last_clean_end)}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Tid</span>
+        <span class="info-value">${d.cleaning_time_min ? Math.round(d.cleaning_time_min) + " min" : "—"}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Areal</span>
+        <span class="info-value">${d.cleaning_area_m2 ? d.cleaning_area_m2 + " m²" : "—"}</span>
+      </div>
+    </div>
+
+    <!-- Totalt -->
+    <div class="card">
+      <h2>Totalt</h2>
+      <div class="info-row">
+        <span class="info-label">Antall rengjøringer</span>
+        <span class="info-value">${d.total_cleaning_count ?? "—"}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Total tid</span>
+        <span class="info-value">${d.total_cleaning_time_h ? Math.round(d.total_cleaning_time_h) + " t" : "—"}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Totalt areal</span>
+        <span class="info-value">${d.total_cleaning_area_m2 ? Math.round(d.total_cleaning_area_m2) + " m²" : "—"}</span>
+      </div>
+    </div>
+
+    <!-- Sensorer visuelt -->
+    <div class="card full-width">
+      <h2>Sensorer</h2>
+      <div class="gauge-row">
+        ${batteryGauge(battery, d.is_charging, d.vacuum_state)}
+        ${tankGauge("clean", d.dock_clean_water_empty, false, true)}
+        ${tankGauge("dirty", false, d.dock_dirty_water_full, false)}
+      </div>
+      <div class="sensor-grid" style="margin-top:16px;">
+        ${(() => {
+          const vacErr = d.vacuum_error && d.vacuum_error !== "none";
+          const dockErr = d.dock_error && d.dock_error !== "ok";
+          if (!vacErr && !dockErr) {
+            return `<div class="sensor-item sensor-ok">
+              <span class="sensor-dot dot-green"></span>
+              <span><strong>Ingen feilmeldinger</strong></span>
+            </div>`;
+          }
+          return `
+            ${vacErr ? `<div class="sensor-item sensor-warn"><span class="sensor-dot dot-red"></span><span>Støvsuger: <strong>${d.vacuum_error}</strong></span></div>` : ""}
+            ${dockErr ? `<div class="sensor-item sensor-warn"><span class="sensor-dot dot-red"></span><span>Ladestasjon: <strong>${d.dock_error}</strong></span></div>` : ""}
+          `;
+        })()}
+      </div>
+    </div>
+  `;
+}
+
+load();
+setInterval(load, 5 * 60 * 1000); // Oppdater hvert 5. minutt
+</script>
+</body>
+</html>
