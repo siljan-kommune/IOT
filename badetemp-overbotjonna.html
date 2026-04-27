@@ -7,7 +7,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- v0.6-test Changelog:
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://fdqjiubwnohtucpercro.supabase.co; script-src 'unsafe-inline' https://cdnjs.cloudflare.com; img-src https://www.siljan.kommune.no;">
+    <!-- v0.7 Changelog:
+         v0.7 - Sikkerhetsforbedringer
+              - Content Security Policy (CSP)
+              - innerHTML erstattet med textContent + createElement
+              - Validering av API-respons (sensor_id, range 2-30°C, NaN, dato)
+              - Validering av BLE-temperatur (range 2-30°C) før push
          v0.6 - Øverbøtjønna-tekst samme størrelse som tilstandstekst (h1)
               - Auto-henter siste temperatur ved sidelasting (alle nettlesere)
               - Filtrerer ut alive-signal (temp=96) fra Supabase
@@ -211,7 +217,7 @@
 
     <div class="footer">
         Veiledende temperatur. Kan avvike fra faktisk vanntemperatur.<br>
-        <a href="https://siljan.kommune.no">siljan.kommune.no</a> &bull; Badetemperatur v0.6-test
+        <a href="https://siljan.kommune.no">siljan.kommune.no</a> &bull; Badetemperatur v0.7
     </div>
 </div>
 
@@ -250,8 +256,12 @@ function updText(temp) {
 }
 
 function showTemp(temp, timeStr, source) {
-    document.getElementById('tempNumber').innerHTML =
-        temp.toFixed(1) + '<span class="temp-unit">°C</span>';
+    const numEl = document.getElementById('tempNumber');
+    numEl.textContent = temp.toFixed(1);
+    const unitSpan = document.createElement('span');
+    unitSpan.className = 'temp-unit';
+    unitSpan.textContent = '°C';
+    numEl.appendChild(unitSpan);
     updRing(temp);
     updText(temp);
     const prefix = source === 'ble' ? 'Målt' : 'Sist registrert';
@@ -301,8 +311,25 @@ async function fetchLast() {
 
         const data = await resp.json();
         if (data && data.length > 0) {
-            const temp = parseFloat(data[0].temperatur);
-            const dt = new Date(data[0].rapportert);
+            const row = data[0];
+
+            if (row.sensor_id !== 'overbotjonna') {
+                status.textContent = 'Ugyldig datakilde';
+                return;
+            }
+
+            const temp = parseFloat(row.temperatur);
+            if (isNaN(temp) || temp < 2 || temp > 30) {
+                status.textContent = 'Ugyldig temperaturverdi';
+                return;
+            }
+
+            const dt = new Date(row.rapportert);
+            if (isNaN(dt.getTime())) {
+                status.textContent = 'Ugyldig tidsstempel';
+                return;
+            }
+
             const timeStr = dt.toLocaleDateString('no-NO', { day: 'numeric', month: 'short' })
                 + ' kl. ' + dt.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
             showTemp(temp, timeStr, 'supa');
@@ -346,6 +373,12 @@ async function readTemperature() {
             return;
         }
 
+        if (isNaN(temp) || temp < 2 || temp > 30) {
+            error.textContent = 'Temperaturverdi utenfor gyldig område (2–30°C).';
+            btn.disabled = false;
+            return;
+        }
+
         const timeStr = 'kl. ' + new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
         showTemp(temp, timeStr, 'ble');
 
@@ -381,7 +414,9 @@ async function readTemperature() {
         readBtn.style.display = 'none';
         lastBtn.style.display = 'block';
         infoBox.style.display = 'block';
-        infoBox.innerHTML = 'Din nettleser støtter ikke Bluetooth-avlesning.<br>Trykk knappen for å måle direkte med sensor.';
+        infoBox.textContent = 'Din nettleser støtter ikke Bluetooth-avlesning.';
+        infoBox.appendChild(document.createElement('br'));
+        infoBox.appendChild(document.createTextNode('Trykk knappen for å måle direkte med sensor.'));
     } else {
         // Chrome / Android — vis begge knapper
         lastBtn.style.display = 'block';
