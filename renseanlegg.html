@@ -123,6 +123,13 @@
     .power-value.inactive { color: var(--muted); text-shadow: none; }
     .power-unit  { font-size: 36px; font-weight: 400; color: var(--muted); margin-left: 8px; }
     .power-label { font-size: 22px; color: var(--muted); margin-top: 8px; letter-spacing: 0.1em; text-transform: uppercase; }
+    .utilization-bar-wrap { width: 340px; margin-top: 20px; }
+    .utilization-label { display: flex; justify-content: space-between; font-size: 16px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .utilization-pct { font-weight: 700; color: var(--text); }
+    .utilization-track { width: 100%; height: 14px; background: #1e3a5f; border-radius: 7px; overflow: hidden; }
+    .utilization-fill { height: 100%; border-radius: 7px; background: linear-gradient(90deg, #22c55e, #86efac); transition: width 1.5s ease, background 1s; width: 0%; }
+    .utilization-fill.medium { background: linear-gradient(90deg, #f5a623, #fde68a); }
+    .utilization-fill.high   { background: linear-gradient(90deg, #22c55e, #86efac); }
 
     /* STATS */
     .stats-grid {
@@ -200,6 +207,15 @@
       <div class="power-now">
         <div class="power-value inactive" id="power-value">--<span class="power-unit">kW</span></div>
         <div class="power-label" id="power-label">Henter data...</div>
+        <div class="utilization-bar-wrap">
+          <div class="utilization-label">
+            <span>Utnyttelsesgrad</span>
+            <span class="utilization-pct" id="util-pct">– %</span>
+          </div>
+          <div class="utilization-track">
+            <div class="utilization-fill" id="util-fill"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -254,6 +270,7 @@
   const SUPABASE_URL  = 'https://fdqjiubwnohtucpercro.supabase.co';
   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkcWppdWJ3bm9odHVjcGVyY3JvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzMwOTAsImV4cCI6MjA4OTkwOTA5MH0.31n5oId96UEOB7Hf-rSCJ_DG57SNWNPJfeiCFDbW_vQ';
   const TABLE         = 'solar_renseanlegg';
+  const PEAK_KWP      = 48.59; // Installert toppeffekt (kWp)
   const KR_PER_KWH    = 1.75;  // Flat takst inkl. nettleie
   const CO2_KG_PER_KWH = 0.0119; // NVE klimadeklarasjon 2024
   const POLL_MS       = 60000;
@@ -306,6 +323,11 @@
     setSolarActive(active);
     document.getElementById('power-value').innerHTML = kw + '<span class="power-unit">kW</span>';
     document.getElementById('power-label').textContent = active ? 'produserer nå' : 'ingen produksjon';
+    const pct = Math.min(100, (w / (PEAK_KWP * 1000)) * 100);
+    const fill = document.getElementById('util-fill');
+    fill.style.width = (active ? pct : 0) + '%';
+    fill.className   = 'utilization-fill ' + (pct >= 50 ? 'high' : 'medium');
+    document.getElementById('util-pct').textContent = active ? pct.toFixed(1) + ' %' : '– %';
 
     const today = Number(d.energy_today_kwh || 0);
     const month = Number(d.energy_month_kwh || 0);
