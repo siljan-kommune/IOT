@@ -5,8 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Badetemperatur Øverbøtjønna – Siljan kommune</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
-    <!-- v0.2-iframe
+    <!-- v0.3-iframe
          Changelog:
+         v0.3 - Fjernet scrolling
+              - Fjernet min-height: 100vh
+              - overflow: hidden på html og body
+              - Komprimert padding og margins
          v0.2 - Sikkerhetsforbedringer (ChatGPT-vurdering)
               - innerHTML erstattet med textContent + createElement
               - API-responsvalidering (sensor_id, range 2-30°C, NaN-sjekk)
@@ -18,7 +22,12 @@
     -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://fdqjiubwnohtucpercro.supabase.co; script-src 'unsafe-inline';">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0;
+            overflow: hidden;
+            height: 100%;
+        }
+        * { box-sizing: border-box; }
         body {
             font-family: 'DM Sans', sans-serif;
             background: transparent;
@@ -26,8 +35,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            padding: 16px;
+            padding: 8px;
         }
         .card {
             text-align: center;
@@ -38,17 +46,17 @@
             font-size: 1.3em;
             font-weight: 700;
             color: #2d6a4f;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
         .kommune {
             font-size: 0.8em;
             color: #888;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
         .temp-ring {
             position: relative;
-            width: 180px; height: 180px;
-            margin: 0 auto 16px;
+            width: 160px; height: 160px;
+            margin: 0 auto 10px;
         }
         .temp-ring > svg {
             position: absolute; top: 0; left: 0;
@@ -59,7 +67,7 @@
         .value-ring {
             fill: none; stroke: url(#tg);
             stroke-width: 6; stroke-linecap: round;
-            stroke-dasharray: 502; stroke-dashoffset: 502;
+            stroke-dasharray: 452; stroke-dashoffset: 452;
             transition: stroke-dashoffset 1.2s ease-out;
         }
         .temp-value {
@@ -69,12 +77,12 @@
         }
         .temp-number {
             font-family: 'DM Mono', monospace;
-            font-size: 2.8em; font-weight: 400;
+            font-size: 2.6em; font-weight: 400;
             line-height: 1; color: #1a1a1a;
         }
         .temp-unit { font-size: 0.3em; color: #888; vertical-align: super; }
         .temp-label { font-size: 0.78em; color: #888; margin-top: 4px; }
-        .status { font-size: 0.78em; color: #aaa; margin-bottom: 8px; }
+        .status { font-size: 0.78em; color: #aaa; margin-bottom: 6px; }
         .disclaimer { font-size: 0.65em; color: #bbb; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .card { animation: fadeIn 0.5s ease-out; }
@@ -94,9 +102,9 @@
     <div class="lokasjon">Øverbøtjønna</div>
     <div class="kommune">Badetemperatur &bull; Siljan kommune</div>
     <div class="temp-ring">
-        <svg viewBox="0 0 180 180">
-            <circle class="bg-ring" cx="90" cy="90" r="80"/>
-            <circle class="value-ring" id="ring" cx="90" cy="90" r="80"/>
+        <svg viewBox="0 0 160 160">
+            <circle class="bg-ring" cx="80" cy="80" r="72"/>
+            <circle class="value-ring" id="ring" cx="80" cy="80" r="72"/>
         </svg>
         <div class="temp-value">
             <div class="temp-number" id="tempNumber">--<span class="temp-unit">°C</span></div>
@@ -112,7 +120,8 @@ const SUPA_ANON = 'sb_publishable_kOLJyLytSLcQvmIgNg8nDQ_HZzIHvcL';
 
 function updRing(temp) {
     const ring = document.getElementById('ring');
-    const c = 2 * Math.PI * 80;
+    const c = 2 * Math.PI * 72; // r=72
+    ring.style.strokeDasharray = c;
     ring.style.strokeDashoffset = c * (1 - Math.max(0, Math.min(35, temp)) / 35);
 }
 
@@ -135,7 +144,6 @@ async function fetchTemp() {
         if (data && data.length > 0) {
             const row = data[0];
 
-            // Valider sensor_id
             if (row.sensor_id !== 'overbotjonna') {
                 document.getElementById('status').textContent = 'Ugyldig datakilde';
                 return;
@@ -143,7 +151,6 @@ async function fetchTemp() {
 
             const temp = parseFloat(row.temperatur);
 
-            // Valider temperatur (NaN-sjekk og range 2-30°C)
             if (isNaN(temp) || temp < 2 || temp > 30) {
                 document.getElementById('status').textContent = 'Ugyldig temperaturverdi';
                 return;
@@ -158,7 +165,6 @@ async function fetchTemp() {
             const now = new Date();
             const diffH = (now - dt) / 3600000;
 
-            // Bygg tempNumber med textContent (ikke innerHTML)
             const numEl = document.getElementById('tempNumber');
             numEl.textContent = temp.toFixed(1);
             const unitSpan = document.createElement('span');
