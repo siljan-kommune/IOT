@@ -299,7 +299,7 @@ function mowerCard(d) {
 
     <div class="info-row">
       <span class="info-label">Sist fullført</span>
-      <span class="info-value">${formatDate(d.last_completed_at)}</span>
+      <span class="info-value">${d.last_completed_at ? formatDate(d.last_completed_at) : "Ikke tilgjengelig"}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Neste start</span>
