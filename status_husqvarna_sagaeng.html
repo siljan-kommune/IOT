@@ -204,18 +204,24 @@ const MOWER_NAMES = {
   "535_awd_sagaengabak":     "Sagaenga bak",
   "535_bofelleskap":         "Bofellesskap",
   "am520_epos_sagaengaforan":"Sagaenga foran",
+  "biblioteket":             "Biblioteket",
+  "midtbygda_skole":         "Midtbygda skole",
 };
 
 const MOWER_ORDER = [
   "535_awd_sagaengabak",
   "am520_epos_sagaengaforan",
   "535_bofelleskap",
+  "biblioteket",
+  "midtbygda_skole",
 ];
 
 const MOWER_MODELS = {
   "535_awd_sagaengabak":     "Automower 535 AWD",
   "535_bofelleskap":         "Automower 535",
   "am520_epos_sagaengaforan":"Automower AM520 EPOS",
+  "biblioteket":             "Automower",
+  "midtbygda_skole":         "Automower",
 };
 
 const STATE_LABELS = {
@@ -228,11 +234,12 @@ const STATE_LABELS = {
 };
 
 const RESTRICTED_LABELS = {
-  week_schedule:   "Ukeplan",
-  park_override:   "Parkert manuelt",
-  sensor_problem:  "Sensorproblem",
-  not_applicable:  "Ingen",
-  none:            "—",
+  week_schedule:          "Ukeplan",
+  park_override:          "Parkert manuelt",
+  sensor_problem:         "Sensorproblem",
+  all_work_areas_completed: "Alle soner fullført",
+  not_applicable:         "Ingen",
+  none:                   "—",
 };
 
 function stateColor(state) {
