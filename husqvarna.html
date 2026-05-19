@@ -144,11 +144,13 @@
     /* Stats-grid (full-width kort) */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px 0;
     }
-    .stat-col { padding: 0 20px; border-right: 1px solid #f0f0f0; }
-    .stat-col:first-child { padding-left: 0; }
+    .stat-col {
+      padding: 0 20px;
+      border-right: 1px solid #f0f0f0;
+    }
     .stat-col:last-child { border-right: none; }
     .stat-col h3 {
       font-size: 0.8rem;
@@ -169,7 +171,7 @@
     .stat-value { font-weight: 600; }
 
     @media (max-width: 700px) {
-      .stats-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr; gap: 0; }
       .stat-col { border-right: none; border-bottom: 1px solid #f0f0f0; padding: 16px 0; }
       .stat-col:last-child { border-bottom: none; }
     }
