@@ -3,182 +3,191 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Badetemperatur Øverbøtjønna</title>
+    <title>Badetemperatur Øverbøtjønna – Siljan kommune</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+    <!-- v0.3-iframe
+         Changelog:
+         v0.3 - Fjernet scrollingen
+              - Fjernet min-height: 100vh
+              - overflow: hidden på html og body
+              - Komprimert padding og margins
+         v0.2 - Sikkerhetsforbedringer (ChatGPT-vurdering)
+              - innerHTML erstattet med textContent + createElement
+              - API-responsvalidering (sensor_id, range 2-30°C, NaN-sjekk)
+              - Content Security Policy (CSP) lagt til
+         v0.1 - Iframe-versjon for siljan.kommune.no
+              - Kun Supabase-visning, ingen BLE/QR/knapper
+              - Kompakt layout for embedding
+              - Auto-oppdatering hvert 5. minutt
+    -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://fdqjiubwnohtucpercro.supabase.co; script-src 'unsafe-inline';">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body {
-            height: 100%;
+            margin: 0; padding: 0;
             overflow: hidden;
+            height: 100%;
+        }
+        * { box-sizing: border-box; }
+        body {
             font-family: 'DM Sans', sans-serif;
             background: transparent;
-        }
-        body {
+            color: #1a1a1a;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 12px;
+            padding: 8px;
         }
-
         .card {
-            width: 100%;
-            max-width: 380px;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.10);
-        }
-
-        /* Toppseksjon med temperatur */
-        .top {
-            padding: 28px 32px 22px;
             text-align: center;
-            background: #1a4d2e;
-            color: white;
-            position: relative;
+            max-width: 340px;
+            width: 100%;
         }
-
-        .location {
-            font-size: 0.85rem;
+        .lokasjon {
+            font-size: 1.3em;
             font-weight: 700;
-            letter-spacing: 0.02em;
+            color: #2d6a4f;
             margin-bottom: 2px;
         }
-        .sublocation {
-            font-size: 0.75rem;
-            opacity: 0.6;
+        .kommune {
+            font-size: 0.8em;
+            color: #888;
             margin-bottom: 12px;
         }
-
-        .temp-row {
-            display: flex;
-            align-items: baseline;
-            justify-content: center;
-            gap: 4px;
-            line-height: 1;
+        .temp-ring {
+            position: relative;
+            width: 160px; height: 160px;
+            margin: 0 auto 10px;
         }
-
+        .temp-ring > svg {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            transform: rotate(-90deg);
+        }
+        .bg-ring { fill: none; stroke: #e8efe8; stroke-width: 6; }
+        .value-ring {
+            fill: none; stroke: url(#tg);
+            stroke-width: 6; stroke-linecap: round;
+            stroke-dasharray: 452; stroke-dashoffset: 452;
+            transition: stroke-dashoffset 1.2s ease-out;
+        }
+        .temp-value {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
         .temp-number {
             font-family: 'DM Mono', monospace;
-            font-size: 4rem;
-            font-weight: 400;
-            color: white;
+            font-size: 2.6em; font-weight: 400;
+            line-height: 1; color: #1a1a1a;
         }
-
-        .temp-unit {
-            font-size: 1.4rem;
-            opacity: 0.7;
-            margin-bottom: 6px;
-        }
-
-        .temp-label {
-            display: inline-block;
-            margin-top: 10px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 20px;
-            padding: 4px 14px;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        /* Bunnseksjon */
-        .bottom {
-            background: white;
-            padding: 14px 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-top: none;
-        }
-
-        .measured {
-            font-size: 0.8rem;
-            color: #888;
-        }
-
-        .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #52b788;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.8); }
-        }
-
-        .error-state .top { background: #888; }
+        .temp-unit { font-size: 0.3em; color: #888; vertical-align: super; }
+        .temp-label { font-size: 0.78em; color: #888; margin-top: 4px; }
+        .status { font-size: 0.78em; color: #aaa; margin-bottom: 6px; }
+        .disclaimer { font-size: 0.65em; color: #bbb; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .card { animation: fadeIn 0.5s ease-out; }
     </style>
 </head>
 <body>
-<div class="card" id="card">
-    <div class="top">
-        <div class="location">Øverbøtjønna</div>
-        <div class="sublocation">Siljan kommune</div>
-        <div class="temp-row">
-            <span class="temp-number" id="tempNumber">--</span>
-            <span class="temp-unit">°C</span>
+<svg style="position:absolute;width:0;height:0;">
+    <defs>
+        <linearGradient id="tg" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#1a4d2e"/>
+            <stop offset="50%" stop-color="#2d6a4f"/>
+            <stop offset="100%" stop-color="#52b788"/>
+        </linearGradient>
+    </defs>
+</svg>
+<div class="card">
+    <div class="lokasjon">Øverbøtjønna</div>
+    <div class="kommune">Badetemperatur &bull; Siljan kommune</div>
+    <div class="temp-ring">
+        <svg viewBox="0 0 160 160">
+            <circle class="bg-ring" cx="80" cy="80" r="72"/>
+            <circle class="value-ring" id="ring" cx="80" cy="80" r="72"/>
+        </svg>
+        <div class="temp-value">
+            <div class="temp-number" id="tempNumber">--<span class="temp-unit">°C</span></div>
+            <div class="temp-label" id="tempLabel">vanntemperatur</div>
         </div>
     </div>
-    <div class="bottom">
-        <span class="measured" id="status">Laster...</span>
-        <span class="dot"></span>
-    </div>
+    <div class="status" id="status">Henter temperatur...</div>
+    <div class="disclaimer">Veiledende temperatur</div>
 </div>
-
 <script>
-const SUPA_URL  = 'https://fdqjiubwnohtucpercro.supabase.co';
+const SUPA_URL = 'https://fdqjiubwnohtucpercro.supabase.co';
 const SUPA_ANON = 'sb_publishable_kOLJyLytSLcQvmIgNg8nDQ_HZzIHvcL';
 
-const COLORS = [
-    { max: 10, bg: '#1a3a5c', label: 'Iskaldt!' },
-    { max: 15, bg: '#1e6091', label: 'Friskt!'  },
-    { max: 18, bg: '#1a4d2e', label: 'Behagelig' },
-    { max: 22, bg: '#2d6a4f', label: 'Deilig!'  },
-    { max: 99, bg: '#d4821a', label: 'Tropisk!'  },
-];
+function updRing(temp) {
+    const ring = document.getElementById('ring');
+    const c = 2 * Math.PI * 72; // r=72
+    ring.style.strokeDasharray = c;
+    ring.style.strokeDashoffset = c * (1 - Math.max(0, Math.min(35, temp)) / 35);
+}
 
-function getConfig(temp) {
-    return COLORS.find(c => temp < c.max) ?? COLORS[COLORS.length - 1];
+function updLabel(temp) {
+    const l = document.getElementById('tempLabel');
+    if (temp < 10)      l.textContent = 'Iskaldt!';
+    else if (temp < 15) l.textContent = 'Friskt!';
+    else if (temp < 18) l.textContent = 'Behagelig';
+    else if (temp < 22) l.textContent = 'Deilig!';
+    else                l.textContent = 'Tropisk!';
 }
 
 async function fetchTemp() {
     try {
         const resp = await fetch(
-            SUPA_URL + '/rest/v1/badetemperatur?temperatur=neq.96&order=rapportert.desc&limit=1',
-            { headers: { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON } }
-        );
+            SUPA_URL + '/rest/v1/badetemperatur?temperatur=neq.96&order=rapportert.desc&limit=1', {
+                headers: { 'apikey': SUPA_ANON, 'Authorization': 'Bearer ' + SUPA_ANON }
+            });
         const data = await resp.json();
+        if (data && data.length > 0) {
+            const row = data[0];
 
-        if (!data?.length) {
-            document.getElementById('tempLabel').textContent = 'Ingen målinger';
-            document.getElementById('status').textContent = '';
-            return;
+            if (row.sensor_id !== 'overbotjonna') {
+                document.getElementById('status').textContent = 'Ugyldig datakilde';
+                return;
+            }
+
+            const temp = parseFloat(row.temperatur);
+
+            if (isNaN(temp) || temp < 2 || temp > 30) {
+                document.getElementById('status').textContent = 'Ugyldig temperaturverdi';
+                return;
+            }
+
+            const dt = new Date(row.rapportert);
+            if (isNaN(dt.getTime())) {
+                document.getElementById('status').textContent = 'Ugyldig tidsstempel';
+                return;
+            }
+
+            const now = new Date();
+            const diffH = (now - dt) / 3600000;
+
+            const numEl = document.getElementById('tempNumber');
+            numEl.textContent = temp.toFixed(1);
+            const unitSpan = document.createElement('span');
+            unitSpan.className = 'temp-unit';
+            unitSpan.textContent = '°C';
+            numEl.appendChild(unitSpan);
+
+            updRing(temp);
+            updLabel(temp);
+
+            let timeStr;
+            if (diffH < 24) {
+                timeStr = 'Sist målt kl. ' + dt.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
+            } else {
+                timeStr = 'Sist målt ' + dt.toLocaleDateString('no-NO', { day: 'numeric', month: 'short' })
+                    + ' kl. ' + dt.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
+            }
+            document.getElementById('status').textContent = timeStr;
+        } else {
+            document.getElementById('status').textContent = 'Ingen målinger ennå';
         }
-
-        const row = data[0];
-        const temp = parseFloat(row.temperatur);
-
-        if (isNaN(temp) || temp < 2 || temp > 30) {
-            document.getElementById('tempLabel').textContent = 'Ugyldig verdi';
-            return;
-        }
-
-        document.getElementById('tempNumber').textContent = temp.toFixed(1);
-
-        const dt = new Date(row.rapportert);
-        const diffH = (Date.now() - dt) / 3600000;
-        const timeStr = diffH < 24
-            ? 'Sist målt kl. ' + dt.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })
-            : 'Sist målt ' + dt.toLocaleDateString('no-NO', { day: 'numeric', month: 'short' })
-              + ' kl. ' + dt.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
-        document.getElementById('status').textContent = timeStr;
-
     } catch (e) {
-        document.getElementById('tempLabel').textContent = 'Kunne ikke hente data';
-        document.getElementById('status').textContent = '';
+        document.getElementById('status').textContent = 'Kunne ikke hente data';
     }
 }
 
