@@ -328,6 +328,38 @@ function mowerCard(d) {
   </div>`;
 }
 
+function statsCard(mowers) {
+  const cols = mowers.map(d => {
+    const name = MOWER_NAMES[d.mower_id] ?? d.mower_id;
+    return `
+    <div class="stat-col">
+      <h3>${name}</h3>
+      <div class="stat-item">
+        <span class="stat-label">Klippe-tid totalt</span>
+        <span class="stat-value">${formatHours(d.total_cutting_time_h)}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Kjørelengde</span>
+        <span class="stat-value">${d.total_drive_distance_km ? Math.round(d.total_drive_distance_km) + " km" : "—"}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Ladesykluser</span>
+        <span class="stat-value">${d.number_of_charging_cycles ?? "—"}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Bladbrukstid</span>
+        <span class="stat-value">${formatHours(d.cutting_blade_usage_time_h)}</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  return `
+  <div class="card full-width">
+    <div class="card-title" style="margin-bottom:20px;">Statistikk</div>
+    <div class="stats-grid">${cols}</div>
+  </div>`;
+}
+
 async function load() {
   const res = await fetch(
     `${SUPA_URL}/rest/v1/husqvarna_status?select=*&order=mower_id`,
@@ -348,7 +380,7 @@ async function load() {
 
   mowers.sort((a, b) => MOWER_ORDER.indexOf(a.mower_id) - MOWER_ORDER.indexOf(b.mower_id));
   const cards = mowers.map(mowerCard).join("");
-  document.getElementById("main").innerHTML = cards;
+  document.getElementById("main").innerHTML = cards + statsCard(mowers);
 }
 
 load();
