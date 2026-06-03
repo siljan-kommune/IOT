@@ -178,7 +178,7 @@
     }
 
     .sun-rays.spinning {
-      animation: spin 20s linear infinite;
+      animation: spin 120s linear infinite;
     }
 
     @keyframes spin {
@@ -199,18 +199,19 @@
     .ray.inactive { opacity: 0; }
 
     /* Generer 12 stråler med CSS */
-    .ray:nth-child(1)  { height: 55px; top: 10px; margin-left: -4px; transform: rotate(0deg)   translateY(-80px); }
-    .ray:nth-child(2)  { height: 45px; top: 10px; margin-left: -4px; transform: rotate(30deg)  translateY(-80px); }
-    .ray:nth-child(3)  { height: 55px; top: 10px; margin-left: -4px; transform: rotate(60deg)  translateY(-80px); }
-    .ray:nth-child(4)  { height: 45px; top: 10px; margin-left: -4px; transform: rotate(90deg)  translateY(-80px); }
-    .ray:nth-child(5)  { height: 55px; top: 10px; margin-left: -4px; transform: rotate(120deg) translateY(-80px); }
-    .ray:nth-child(6)  { height: 45px; top: 10px; margin-left: -4px; transform: rotate(150deg) translateY(-80px); }
-    .ray:nth-child(7)  { height: 55px; top: 10px; margin-left: -4px; transform: rotate(180deg) translateY(-80px); }
-    .ray:nth-child(8)  { height: 45px; top: 10px; margin-left: -4px; transform: rotate(210deg) translateY(-80px); }
-    .ray:nth-child(9)  { height: 55px; top: 10px; margin-left: -4px; transform: rotate(240deg) translateY(-80px); }
-    .ray:nth-child(10) { height: 45px; top: 10px; margin-left: -4px; transform: rotate(270deg) translateY(-80px); }
-    .ray:nth-child(11) { height: 55px; top: 10px; margin-left: -4px; transform: rotate(300deg) translateY(-80px); }
-    .ray:nth-child(12) { height: 45px; top: 10px; margin-left: -4px; transform: rotate(330deg) translateY(-80px); }
+    /* Pivot (bottom center) = (150,150) = solas senter. top = 150 − height */
+    .ray:nth-child(1)  { height: 55px; top: 95px;  margin-left: -4px; transform: rotate(0deg)   translateY(-95px); }
+    .ray:nth-child(2)  { height: 45px; top: 105px; margin-left: -4px; transform: rotate(30deg)  translateY(-95px); }
+    .ray:nth-child(3)  { height: 55px; top: 95px;  margin-left: -4px; transform: rotate(60deg)  translateY(-95px); }
+    .ray:nth-child(4)  { height: 45px; top: 105px; margin-left: -4px; transform: rotate(90deg)  translateY(-95px); }
+    .ray:nth-child(5)  { height: 55px; top: 95px;  margin-left: -4px; transform: rotate(120deg) translateY(-95px); }
+    .ray:nth-child(6)  { height: 45px; top: 105px; margin-left: -4px; transform: rotate(150deg) translateY(-95px); }
+    .ray:nth-child(7)  { height: 55px; top: 95px;  margin-left: -4px; transform: rotate(180deg) translateY(-95px); }
+    .ray:nth-child(8)  { height: 45px; top: 105px; margin-left: -4px; transform: rotate(210deg) translateY(-95px); }
+    .ray:nth-child(9)  { height: 55px; top: 95px;  margin-left: -4px; transform: rotate(240deg) translateY(-95px); }
+    .ray:nth-child(10) { height: 45px; top: 105px; margin-left: -4px; transform: rotate(270deg) translateY(-95px); }
+    .ray:nth-child(11) { height: 55px; top: 95px;  margin-left: -4px; transform: rotate(300deg) translateY(-95px); }
+    .ray:nth-child(12) { height: 45px; top: 105px; margin-left: -4px; transform: rotate(330deg) translateY(-95px); }
 
     /* Effekt-tall */
     .power-now {
