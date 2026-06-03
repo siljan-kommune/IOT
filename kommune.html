@@ -41,22 +41,23 @@
     .sun-circle { position: relative; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffe066, #f5a623 60%, #c47a12); box-shadow: 0 0 40px rgba(245,166,35,0.6); z-index: 2; transition: box-shadow 1s, filter 1s; }
     .sun-circle.inactive { background: radial-gradient(circle at 35% 35%, #3a3a3a, #222 60%, #111); box-shadow: 0 0 10px rgba(0,0,0,0.5); filter: grayscale(1); }
     .sun-rays { position: absolute; width: 280px; height: 280px; z-index: 1; }
-    .sun-rays.spinning { animation: spin 20s linear infinite; }
+    .sun-rays.spinning { animation: spin 120s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .ray { position: absolute; width: 8px; border-radius: 4px; background: linear-gradient(to top, rgba(245,166,35,0.8), transparent); left: 50%; transform-origin: bottom center; transition: opacity 1s; }
     .ray.inactive { opacity: 0; }
-    .ray:nth-child(1)  { height: 50px; top: 10px; margin-left: -4px; transform: rotate(0deg)   translateY(-75px); }
-    .ray:nth-child(2)  { height: 40px; top: 10px; margin-left: -4px; transform: rotate(30deg)  translateY(-75px); }
-    .ray:nth-child(3)  { height: 50px; top: 10px; margin-left: -4px; transform: rotate(60deg)  translateY(-75px); }
-    .ray:nth-child(4)  { height: 40px; top: 10px; margin-left: -4px; transform: rotate(90deg)  translateY(-75px); }
-    .ray:nth-child(5)  { height: 50px; top: 10px; margin-left: -4px; transform: rotate(120deg) translateY(-75px); }
-    .ray:nth-child(6)  { height: 40px; top: 10px; margin-left: -4px; transform: rotate(150deg) translateY(-75px); }
-    .ray:nth-child(7)  { height: 50px; top: 10px; margin-left: -4px; transform: rotate(180deg) translateY(-75px); }
-    .ray:nth-child(8)  { height: 40px; top: 10px; margin-left: -4px; transform: rotate(210deg) translateY(-75px); }
-    .ray:nth-child(9)  { height: 50px; top: 10px; margin-left: -4px; transform: rotate(240deg) translateY(-75px); }
-    .ray:nth-child(10) { height: 40px; top: 10px; margin-left: -4px; transform: rotate(270deg) translateY(-75px); }
-    .ray:nth-child(11) { height: 50px; top: 10px; margin-left: -4px; transform: rotate(300deg) translateY(-75px); }
-    .ray:nth-child(12) { height: 40px; top: 10px; margin-left: -4px; transform: rotate(330deg) translateY(-75px); }
+    /* Pivot (bottom center) = (140,140) = solas senter. top = 140 − height */
+    .ray:nth-child(1)  { height: 50px; top: 90px;  margin-left: -4px; transform: rotate(0deg)   translateY(-90px); }
+    .ray:nth-child(2)  { height: 40px; top: 100px; margin-left: -4px; transform: rotate(30deg)  translateY(-90px); }
+    .ray:nth-child(3)  { height: 50px; top: 90px;  margin-left: -4px; transform: rotate(60deg)  translateY(-90px); }
+    .ray:nth-child(4)  { height: 40px; top: 100px; margin-left: -4px; transform: rotate(90deg)  translateY(-90px); }
+    .ray:nth-child(5)  { height: 50px; top: 90px;  margin-left: -4px; transform: rotate(120deg) translateY(-90px); }
+    .ray:nth-child(6)  { height: 40px; top: 100px; margin-left: -4px; transform: rotate(150deg) translateY(-90px); }
+    .ray:nth-child(7)  { height: 50px; top: 90px;  margin-left: -4px; transform: rotate(180deg) translateY(-90px); }
+    .ray:nth-child(8)  { height: 40px; top: 100px; margin-left: -4px; transform: rotate(210deg) translateY(-90px); }
+    .ray:nth-child(9)  { height: 50px; top: 90px;  margin-left: -4px; transform: rotate(240deg) translateY(-90px); }
+    .ray:nth-child(10) { height: 40px; top: 100px; margin-left: -4px; transform: rotate(270deg) translateY(-90px); }
+    .ray:nth-child(11) { height: 50px; top: 90px;  margin-left: -4px; transform: rotate(300deg) translateY(-90px); }
+    .ray:nth-child(12) { height: 40px; top: 100px; margin-left: -4px; transform: rotate(330deg) translateY(-90px); }
     .power-now { text-align: center; }
     .power-value { font-size: 96px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; color: var(--yellow); text-shadow: 0 0 30px rgba(245,166,35,0.5); transition: color 1s, text-shadow 1s; }
     .power-value.inactive { color: var(--muted); text-shadow: none; }
