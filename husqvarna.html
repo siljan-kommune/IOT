@@ -246,7 +246,7 @@ const RESTRICTED_LABELS = {
 
 // ── Cramer-konfig ─────────────────────────────────────────────────────────────
 const CRAMER_NAMES = {
-  "221100850": "Kommunehuset",
+  "221100850": "Sykehjemmet",
 };
 
 const CRAMER_STATUS_LABELS = {
@@ -383,7 +383,7 @@ function cramerCard(d) {
     </div>
     <div class="error-pill ${offline ? "pill-gray" : "pill-ok"}">
       <span class="pill-dot ${offline ? "pill-dot-gray" : "pill-dot-green"}"></span>
-      ${offline ? "Offline" : "Online"}
+      ${offline ? "Offline" : "Ingen feil"}
     </div>
   </div>`;
 }
