@@ -345,7 +345,20 @@ function mowerCard(d) {
   </div>`;
 }
 
-function cramerCard(d) {
+function formatHms(seconds) {
+  if (!seconds || seconds <= 0) return "0t";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return m > 0 ? `${h}t ${m}min` : `${h}t`;
+}
+
+function formatTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+}
+
+function cramerCard(d, cut) {
   const name      = CRAMER_NAMES[d.mower_id] ?? d.device_name ?? d.mower_id;
   const model     = d.model_description ?? d.model_name ?? "Cramer";
   const rawStatus = d.sub_status_text ?? "—";
@@ -354,7 +367,12 @@ function cramerCard(d) {
   const pct       = d.battery ?? 0;
   const bColor    = batteryColor(pct);
   const offline   = !d.is_online;
-  const runH      = d.running_time_s ? formatHours(d.running_time_s / 3600) : "—";
+
+  const todayH   = cut.today_s   > 0 ? formatHms(cut.today_s)   : "0t";
+  const last24H  = cut.last24h_s > 0 ? formatHms(cut.last24h_s) : "0t";
+  const nextStart = d.next_start ? formatDate(d.next_start) : "—";
+
+  const hasError = d.error_text && d.error_text.trim().length > 0;
 
   return `
   <div class="card">
@@ -374,16 +392,20 @@ function cramerCard(d) {
       </div>
     </div>
     <div class="info-row">
-      <span class="info-label">Sist sett</span>
-      <span class="info-value">${formatDate(d.updated_at)}</span>
+      <span class="info-label">Klippetid idag</span>
+      <span class="info-value">${todayH}</span>
     </div>
     <div class="info-row">
-      <span class="info-label">Driftstid totalt</span>
-      <span class="info-value">${runH}</span>
+      <span class="info-label">Klippetid siste døgn</span>
+      <span class="info-value">${last24H}</span>
     </div>
-    <div class="error-pill ${offline ? "pill-gray" : "pill-ok"}">
-      <span class="pill-dot ${offline ? "pill-dot-gray" : "pill-dot-green"}"></span>
-      ${offline ? "Offline" : "Ingen feil"}
+    <div class="info-row">
+      <span class="info-label">Neste start</span>
+      <span class="info-value">${nextStart}</span>
+    </div>
+    <div class="error-pill ${hasError ? "pill-warn" : "pill-ok"}">
+      <span class="pill-dot ${hasError ? "pill-dot-red" : "pill-dot-green"}"></span>
+      ${hasError ? d.error_text : "Ingen feil"}
     </div>
   </div>`;
 }
@@ -392,13 +414,17 @@ function cramerCard(d) {
 async function load() {
   const headers = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` };
 
-  const [husqRes, cramerRes] = await Promise.all([
+  const [husqRes, cramerRes, cuttingRes] = await Promise.all([
     fetch(`${SUPA_URL}/rest/v1/husqvarna_status?select=*&order=mower_id`, { headers }),
     fetch(`${SUPA_URL}/rest/v1/cramer_status?select=*`, { headers }),
+    fetch(`${SUPA_URL}/rest/v1/cramer_cutting_times?select=*`, { headers }),
   ]);
 
   const mowers  = await husqRes.json();
   const cramers = await cramerRes.json();
+  const cutting = await cuttingRes.json();
+
+  const cuttingMap = Object.fromEntries((cutting || []).map(c => [c.mower_id, c]));
 
   if (!mowers.length && !cramers.length) {
     document.getElementById("main").innerHTML = '<div id="loading">Ingen data funnet.</div>';
@@ -416,7 +442,7 @@ async function load() {
 
   document.getElementById("main").innerHTML = [
     ...mowers.map(mowerCard),
-    ...cramers.map(cramerCard),
+    ...cramers.map(c => cramerCard(c, cuttingMap[c.mower_id] || {})),
   ].join("");
 }
 
