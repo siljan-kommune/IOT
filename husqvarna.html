@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Husqvarna robotklippere</title>
+  <title>Robotklippere</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -59,7 +59,6 @@
       margin-bottom: 16px;
     }
 
-    /* Klipper-navn */
     .mower-name {
       font-size: 1.05rem;
       font-weight: 700;
@@ -67,7 +66,6 @@
       margin-bottom: 16px;
     }
 
-    /* Status */
     .status-big {
       display: flex;
       align-items: center;
@@ -87,7 +85,6 @@
       font-weight: 700;
     }
 
-    /* Batteri */
     .battery-wrap { margin-bottom: 16px; }
     .battery-label {
       display: flex;
@@ -108,7 +105,6 @@
       transition: width 0.5s;
     }
 
-    /* Info-rader */
     .info-row {
       display: flex;
       justify-content: space-between;
@@ -121,7 +117,6 @@
     .info-label { color: #666; }
     .info-value { font-weight: 600; }
 
-    /* Feilpill */
     .error-pill {
       display: inline-flex;
       align-items: center;
@@ -132,16 +127,14 @@
       font-weight: 600;
       margin-top: 12px;
     }
-    .pill-ok { background: #e8f5e9; color: #2e7d32; }
+    .pill-ok   { background: #e8f5e9; color: #2e7d32; }
     .pill-warn { background: #ffebee; color: #c62828; }
-    .pill-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-    }
+    .pill-gray { background: #f5f5f5; color: #888; }
+    .pill-dot  { width: 8px; height: 8px; border-radius: 50%; }
     .pill-dot-green { background: #43a047; }
-    .pill-dot-red { background: #e53935; }
+    .pill-dot-red   { background: #e53935; }
+    .pill-dot-gray  { background: #aaa; }
 
-    /* Stats-grid (full-width kort) */
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
@@ -152,7 +145,7 @@
       border-right: 1px solid #f0f0f0;
     }
     .stat-col:first-child { padding-left: 0; }
-    .stat-col:last-child { border-right: none; padding-right: 0; }
+    .stat-col:last-child  { border-right: none; padding-right: 0; }
     .stat-col h3 {
       font-size: 0.78rem;
       text-transform: uppercase;
@@ -195,7 +188,7 @@
 <header>
   <div>
     <div style="font-size:0.75rem; opacity:0.5; margin-bottom:4px;">Siljan kommune — IoT</div>
-    <h1>🌿 Husqvarna robotklippere</h1>
+    <h1>🌿 Robotklippere</h1>
   </div>
   <div id="last-updated">Henter data...</div>
 </header>
@@ -208,12 +201,13 @@
 const SUPA_URL = "https://fdqjiubwnohtucpercro.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkcWppdWJ3bm9odHVjcGVyY3JvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzMwOTAsImV4cCI6MjA4OTkwOTA5MH0.31n5oId96UEOB7Hf-rSCJ_DG57SNWNPJfeiCFDbW_vQ";
 
+// ── Husqvarna-konfig ──────────────────────────────────────────────────────────
 const MOWER_NAMES = {
-  "535_awd_sagaengabak":     "Sagaenga bak",
-  "535_bofelleskap":         "Bofellesskap",
-  "am520_epos_sagaengaforan":"Sagaenga foran",
-  "biblioteket":             "Biblioteket",
-  "midtbygda_skole":         "Midtbygda skole",
+  "535_awd_sagaengabak":      "Sagaenga bak",
+  "535_bofelleskap":          "Bofellesskap",
+  "am520_epos_sagaengaforan": "Sagaenga foran",
+  "biblioteket":              "Biblioteket",
+  "midtbygda_skole":          "Midtbygda skole",
 };
 
 const MOWER_ORDER = [
@@ -225,11 +219,11 @@ const MOWER_ORDER = [
 ];
 
 const MOWER_MODELS = {
-  "535_awd_sagaengabak":     "Automower 535 AWD",
-  "535_bofelleskap":         "Automower 535",
-  "am520_epos_sagaengaforan":"Automower AM520 EPOS",
-  "biblioteket":             "Automower 520 EPOS",
-  "midtbygda_skole":         "Automower",
+  "535_awd_sagaengabak":      "Automower 535 AWD",
+  "535_bofelleskap":          "Automower 535",
+  "am520_epos_sagaengaforan": "Automower AM520 EPOS",
+  "biblioteket":              "Automower 520 EPOS",
+  "midtbygda_skole":          "Automower",
 };
 
 const STATE_LABELS = {
@@ -242,34 +236,61 @@ const STATE_LABELS = {
 };
 
 const RESTRICTED_LABELS = {
-  week_schedule:          "Ukeplan",
-  park_override:          "Parkert manuelt",
-  sensor_problem:         "Sensorproblem",
-  all_work_areas_completed: "Alle soner fullført",
-  not_applicable:         "Ingen",
-  none:                   "—",
+  week_schedule:            "Ukeplan",
+  park_override:            "Parkert manuelt",
+  sensor_problem:           "Sensorproblem",
+  all_work_areas_completed: "Alle soner fullfort",
+  not_applicable:           "Ingen",
+  none:                     "—",
 };
 
-function stateColor(state) {
-  if (state === "mowing")    return "#43a047";
-  if (state === "error")     return "#e53935";
-  if (state === "paused")    return "#fb8c00";
-  if (state === "returning") return "#fb8c00";
-  return "#43a047"; // docked/charging
-}
+// ── Cramer-konfig ─────────────────────────────────────────────────────────────
+const CRAMER_NAMES = {
+  "221100850": "Kommunehuset",
+};
 
+const CRAMER_STATUS_LABELS = {
+  "Charging":   "Lader",
+  "Mowing":     "Klipper",
+  "Parked":     "Parkert",
+  "Paused":     "Pauset",
+  "Error":      "FEIL",
+  "Leaving":    "Starter",
+  "Searching":  "Soker",
+  "Going home": "Returnerer",
+};
+
+// ── Hjelpefunksjonar ──────────────────────────────────────────────────────────
 function batteryColor(pct) {
   if (pct >= 60) return "#43a047";
   if (pct >= 30) return "#fb8c00";
   return "#e53935";
 }
 
+function stateColor(state) {
+  if (state === "mowing")    return "#43a047";
+  if (state === "error")     return "#e53935";
+  if (state === "paused")    return "#fb8c00";
+  if (state === "returning") return "#fb8c00";
+  return "#43a047";
+}
+
+function cramerStatusColor(subStatusText, isOnline) {
+  if (!isOnline) return "#aaa";
+  const s = (subStatusText || "").toLowerCase();
+  if (s === "mowing")                    return "#43a047";
+  if (s === "error")                     return "#e53935";
+  if (s === "paused" || s === "leaving") return "#fb8c00";
+  if (s === "going home")                return "#fb8c00";
+  return "#43a047";
+}
+
 function formatDate(iso) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
+  const d   = new Date(iso);
+  const dd  = String(d.getDate()).padStart(2, "0");
+  const mm  = String(d.getMonth() + 1).padStart(2, "0");
+  const hh  = String(d.getHours()).padStart(2, "0");
   const min = String(d.getMinutes()).padStart(2, "0");
   return `${dd}.${mm} kl. ${hh}:${min}`;
 }
@@ -277,31 +298,29 @@ function formatDate(iso) {
 function formatHours(h) {
   if (h === null || h === undefined) return "—";
   const days = Math.floor(h / 24);
-  const hrs = Math.round(h % 24);
+  const hrs  = Math.round(h % 24);
   return days > 0 ? `${days}d ${hrs}t` : `${hrs}t`;
 }
 
+// ── Kortmalar ─────────────────────────────────────────────────────────────────
 function mowerCard(d) {
-  const name  = MOWER_NAMES[d.mower_id] ?? d.mower_id;
-  const model = MOWER_MODELS[d.mower_id] ?? "";
-  const state = d.state ?? "unknown";
-  const label = STATE_LABELS[state] ?? state;
-  const color = stateColor(state);
-  const pct   = d.battery ?? 0;
-  const bColor= batteryColor(pct);
+  const name     = MOWER_NAMES[d.mower_id] ?? d.mower_id;
+  const model    = MOWER_MODELS[d.mower_id] ?? "";
+  const state    = d.state ?? "unknown";
+  const label    = STATE_LABELS[state] ?? state;
+  const color    = stateColor(state);
+  const pct      = d.battery ?? 0;
+  const bColor   = batteryColor(pct);
   const hasError = d.error && d.error !== "no_error";
-  const restricted = RESTRICTED_LABELS[d.restricted_reason] ?? d.restricted_reason ?? "—";
 
   return `
   <div class="card">
     <div class="card-title">${model}</div>
     <div class="mower-name">${name}</div>
-
     <div class="status-big">
       <span class="status-dot" style="background:${color}"></span>
       <span class="status-text" style="color:${color}">${label}</span>
     </div>
-
     <div class="battery-wrap">
       <div class="battery-label">
         <span>Batteri</span>
@@ -311,16 +330,14 @@ function mowerCard(d) {
         <div class="battery-fill" style="width:${pct}%; background:${bColor}"></div>
       </div>
     </div>
-
     <div class="info-row">
-      <span class="info-label">Sist fullført</span>
+      <span class="info-label">Sist fullfort</span>
       <span class="info-value">${d.last_completed_at ? formatDate(d.last_completed_at) : "Ikke tilgjengelig"}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Neste start</span>
       <span class="info-value">${formatDate(d.next_start)}</span>
     </div>
-
     <div class="error-pill ${hasError ? "pill-warn" : "pill-ok"}">
       <span class="pill-dot ${hasError ? "pill-dot-red" : "pill-dot-green"}"></span>
       ${hasError ? d.error : "Ingen feil"}
@@ -328,27 +345,79 @@ function mowerCard(d) {
   </div>`;
 }
 
-async function load() {
-  const res = await fetch(
-    `${SUPA_URL}/rest/v1/husqvarna_status?select=*&order=mower_id`,
-    { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
-  );
-  const mowers = await res.json();
+function cramerCard(d) {
+  const name      = CRAMER_NAMES[d.mower_id] ?? d.device_name ?? d.mower_id;
+  const model     = d.model_description ?? d.model_name ?? "Cramer";
+  const rawStatus = d.sub_status_text ?? "—";
+  const label     = CRAMER_STATUS_LABELS[rawStatus] ?? rawStatus;
+  const color     = cramerStatusColor(rawStatus, d.is_online);
+  const pct       = d.battery ?? 0;
+  const bColor    = batteryColor(pct);
+  const offline   = !d.is_online;
+  const runH      = d.running_time_s ? formatHours(d.running_time_s / 3600) : "—";
 
-  if (!mowers.length) {
-    document.getElementById("main").innerHTML =
-      '<div id="loading">Ingen data funnet.</div>';
+  return `
+  <div class="card">
+    <div class="card-title">${model}</div>
+    <div class="mower-name">${name}</div>
+    <div class="status-big">
+      <span class="status-dot" style="background:${color}"></span>
+      <span class="status-text" style="color:${color}">${offline ? "Frakoblet" : label}</span>
+    </div>
+    <div class="battery-wrap">
+      <div class="battery-label">
+        <span>Batteri</span>
+        <span>${pct}%${d.is_charging ? " — Lader" : ""}</span>
+      </div>
+      <div class="battery-bar">
+        <div class="battery-fill" style="width:${pct}%; background:${bColor}"></div>
+      </div>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Sist sett</span>
+      <span class="info-value">${formatDate(d.updated_at)}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Driftstid totalt</span>
+      <span class="info-value">${runH}</span>
+    </div>
+    <div class="error-pill ${offline ? "pill-gray" : "pill-ok"}">
+      <span class="pill-dot ${offline ? "pill-dot-gray" : "pill-dot-green"}"></span>
+      ${offline ? "Offline" : "Online"}
+    </div>
+  </div>`;
+}
+
+// ── Last og render ────────────────────────────────────────────────────────────
+async function load() {
+  const headers = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` };
+
+  const [husqRes, cramerRes] = await Promise.all([
+    fetch(`${SUPA_URL}/rest/v1/husqvarna_status?select=*&order=mower_id`, { headers }),
+    fetch(`${SUPA_URL}/rest/v1/cramer_status?select=*`, { headers }),
+  ]);
+
+  const mowers  = await husqRes.json();
+  const cramers = await cramerRes.json();
+
+  if (!mowers.length && !cramers.length) {
+    document.getElementById("main").innerHTML = '<div id="loading">Ingen data funnet.</div>';
     return;
   }
 
-  const latest = mowers.reduce((a, b) =>
-    new Date(a.updated_at) > new Date(b.updated_at) ? a : b);
-  document.getElementById("last-updated").innerHTML =
-    `Oppdatert: ${formatDate(latest.updated_at)}`;
+  const allUpdated = [...mowers, ...cramers]
+    .map(x => x.updated_at).filter(Boolean).sort();
+  if (allUpdated.length) {
+    document.getElementById("last-updated").innerHTML =
+      `Oppdatert: ${formatDate(allUpdated.at(-1))}`;
+  }
 
   mowers.sort((a, b) => MOWER_ORDER.indexOf(a.mower_id) - MOWER_ORDER.indexOf(b.mower_id));
-  const cards = mowers.map(mowerCard).join("");
-  document.getElementById("main").innerHTML = cards;
+
+  document.getElementById("main").innerHTML = [
+    ...mowers.map(mowerCard),
+    ...cramers.map(cramerCard),
+  ].join("");
 }
 
 load();
