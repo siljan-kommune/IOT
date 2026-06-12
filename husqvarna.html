@@ -135,6 +135,36 @@
     .pill-dot-red   { background: #e53935; }
     .pill-dot-gray  { background: #aaa; }
 
+    /* Botnrad: feilpill + klippetid-chips */
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .card-footer .error-pill { margin-top: 0; }
+    .cut-chips { display: flex; gap: 8px; }
+    .cut-chip {
+      background: #f0f7f0;
+      border-radius: 12px;
+      padding: 4px 12px;
+      text-align: center;
+      line-height: 1.25;
+      min-width: 62px;
+    }
+    .cut-chip .cut-label {
+      font-size: 0.58rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #888;
+    }
+    .cut-chip .cut-value {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #2e7d32;
+    }
+
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
@@ -352,10 +382,52 @@ function formatHms(seconds) {
   return m > 0 ? `${h}t ${m}min` : `${h}t`;
 }
 
-function formatTime(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+// Reknar ut neste klippehending frå Cramer sin kalender (schedule-JSON).
+// Inne i eit aktivt vindauge -> "Klipper til HH:MM". Utanfor -> "Neste start ...".
+function cramerNextEvent(schedule) {
+  if (!schedule || !schedule.weekDays1) return { label: "Neste start", value: "—" };
+
+  const now    = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const todaySI = (now.getDay() + 6) % 7;   // 0=man .. 6=søn
+
+  const fmt = (min) =>
+    `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+
+  function windows(si) {
+    const wins = [];
+    for (const wd of [schedule.weekDays1, schedule.weekDays2]) {
+      const e = wd && wd[si];
+      if (e && e.isEnabled) {
+        const start = e.startHour * 60 + e.startMinute;
+        const end   = e.endHour   * 60 + e.endMinute;
+        if (end > start) wins.push({ start, end });
+      }
+    }
+    return wins.sort((a, b) => a.start - b.start);
+  }
+
+  // Inne i eit vindauge i dag?
+  for (const w of windows(todaySI)) {
+    if (nowMin >= w.start && nowMin < w.end) {
+      return { label: "Klipper til", value: fmt(w.end) };
+    }
+  }
+
+  // Finn neste start innan 7 dagar
+  const WD = ["man", "tir", "ons", "tor", "fre", "lør", "søn"];
+  for (let off = 0; off < 8; off++) {
+    const si = (todaySI + off) % 7;
+    for (const w of windows(si)) {
+      if (off === 0 && w.start <= nowMin) continue;
+      let when;
+      if      (off === 0) when = `kl. ${fmt(w.start)}`;
+      else if (off === 1) when = `i morgen ${fmt(w.start)}`;
+      else                when = `${WD[si]} ${fmt(w.start)}`;
+      return { label: "Neste start", value: when };
+    }
+  }
+  return { label: "Neste start", value: "—" };
 }
 
 function cramerCard(d, cut) {
@@ -368,11 +440,10 @@ function cramerCard(d, cut) {
   const bColor    = batteryColor(pct);
   const offline   = !d.is_online;
 
-  const todayH   = cut.today_s   > 0 ? formatHms(cut.today_s)   : "0t";
-  const last24H  = cut.last24h_s > 0 ? formatHms(cut.last24h_s) : "0t";
-  const nextStart = d.next_start ? formatDate(d.next_start) : "—";
-
-  const hasError = d.error_text && d.error_text.trim().length > 0;
+  const todayH    = cut.today_s   > 0 ? formatHms(cut.today_s)   : "0t";
+  const last24H   = cut.last24h_s > 0 ? formatHms(cut.last24h_s) : "0t";
+  const next      = cramerNextEvent(d.schedule);
+  const hasError  = d.error_text && d.error_text.trim().length > 0;
 
   return `
   <div class="card">
@@ -392,20 +463,28 @@ function cramerCard(d, cut) {
       </div>
     </div>
     <div class="info-row">
-      <span class="info-label">Klippetid idag</span>
-      <span class="info-value">${todayH}</span>
+      <span class="info-label">Sist fullført</span>
+      <span class="info-value">${d.last_completed_at ? formatDate(d.last_completed_at) : "Ikke tilgjengelig"}</span>
     </div>
     <div class="info-row">
-      <span class="info-label">Klippetid siste døgn</span>
-      <span class="info-value">${last24H}</span>
+      <span class="info-label">${next.label}</span>
+      <span class="info-value">${next.value}</span>
     </div>
-    <div class="info-row">
-      <span class="info-label">Neste start</span>
-      <span class="info-value">${nextStart}</span>
-    </div>
-    <div class="error-pill ${hasError ? "pill-warn" : "pill-ok"}">
-      <span class="pill-dot ${hasError ? "pill-dot-red" : "pill-dot-green"}"></span>
-      ${hasError ? d.error_text : "Ingen feil"}
+    <div class="card-footer">
+      <div class="error-pill ${hasError ? "pill-warn" : "pill-ok"}">
+        <span class="pill-dot ${hasError ? "pill-dot-red" : "pill-dot-green"}"></span>
+        ${hasError ? d.error_text : "Ingen feil"}
+      </div>
+      <div class="cut-chips">
+        <div class="cut-chip">
+          <div class="cut-label">Idag</div>
+          <div class="cut-value">${todayH}</div>
+        </div>
+        <div class="cut-chip">
+          <div class="cut-label">Siste døgn</div>
+          <div class="cut-value">${last24H}</div>
+        </div>
+      </div>
     </div>
   </div>`;
 }
