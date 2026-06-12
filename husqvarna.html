@@ -66,6 +66,21 @@
       margin-bottom: 16px;
     }
 
+    /* Cramer: namn + sist-oppdatert tidsstempel på same rad */
+    .name-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .name-row .mower-name { margin-bottom: 0; }
+    .name-ts {
+      font-size: 0.72rem;
+      color: #999;
+      white-space: nowrap;
+    }
+
     .status-big {
       display: flex;
       align-items: center;
@@ -375,6 +390,13 @@ function mowerCard(d) {
   </div>`;
 }
 
+function formatFull(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
 function formatHms(seconds) {
   if (!seconds || seconds <= 0) return "0t";
   const h = Math.floor(seconds / 3600);
@@ -448,7 +470,10 @@ function cramerCard(d, cut) {
   return `
   <div class="card">
     <div class="card-title">${model}</div>
-    <div class="mower-name">${name}</div>
+    <div class="name-row">
+      <span class="mower-name">${name}</span>
+      <span class="name-ts">${formatFull(d.updated_at)}</span>
+    </div>
     <div class="status-big">
       <span class="status-dot" style="background:${color}"></span>
       <span class="status-text" style="color:${color}">${offline ? "Frakoblet" : label}</span>
