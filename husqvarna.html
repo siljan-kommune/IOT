@@ -66,7 +66,7 @@
       margin-bottom: 16px;
     }
 
-    /* Namn + sist-oppdatert tidsstempel på same rad */
+    /* Cramer: namn + sist-oppdatert tidsstempel på same rad */
     .name-row {
       display: flex;
       align-items: baseline;
@@ -340,22 +340,15 @@ function formatDate(iso) {
   return `${dd}.${mm} kl. ${hh}:${min}`;
 }
 
-function formatFull(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  const p = (n) => String(n).padStart(2, "0");
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
-function formatHms(seconds) {
-  if (!seconds || seconds <= 0) return "0t";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return m > 0 ? `${h}t ${m}min` : `${h}t`;
+function formatHours(h) {
+  if (h === null || h === undefined) return "—";
+  const days = Math.floor(h / 24);
+  const hrs  = Math.round(h % 24);
+  return days > 0 ? `${days}d ${hrs}t` : `${hrs}t`;
 }
 
 // ── Kortmalar ─────────────────────────────────────────────────────────────────
-function mowerCard(d, cut) {
+function mowerCard(d) {
   const name     = MOWER_NAMES[d.mower_id] ?? d.mower_id;
   const model    = MOWER_MODELS[d.mower_id] ?? "";
   const state    = d.state ?? "unknown";
@@ -364,16 +357,11 @@ function mowerCard(d, cut) {
   const pct      = d.battery ?? 0;
   const bColor   = batteryColor(pct);
   const hasError = d.error && d.error !== "no_error";
-  const todayH   = cut && cut.today_s     > 0 ? formatHms(cut.today_s)     : "0t";
-  const yesterH  = cut && cut.yesterday_s > 0 ? formatHms(cut.yesterday_s) : "0t";
 
   return `
   <div class="card">
     <div class="card-title">${model}</div>
-    <div class="name-row">
-      <span class="mower-name">${name}</span>
-      <span class="name-ts">${formatFull(d.updated_at)}</span>
-    </div>
+    <div class="mower-name">${name}</div>
     <div class="status-big">
       <span class="status-dot" style="background:${color}"></span>
       <span class="status-text" style="color:${color}">${label}</span>
@@ -395,31 +383,35 @@ function mowerCard(d, cut) {
       <span class="info-label">Neste start</span>
       <span class="info-value">${formatDate(d.next_start)}</span>
     </div>
-    <div class="card-footer">
-      <div class="error-pill ${hasError ? "pill-warn" : "pill-ok"}">
-        <span class="pill-dot ${hasError ? "pill-dot-red" : "pill-dot-green"}"></span>
-        ${hasError ? d.error : "Ingen feil"}
-      </div>
-      <div class="cut-chips">
-        <div class="cut-chip">
-          <div class="cut-label">Idag</div>
-          <div class="cut-value">${todayH}</div>
-        </div>
-        <div class="cut-chip">
-          <div class="cut-label">I går</div>
-          <div class="cut-value">${yesterH}</div>
-        </div>
-      </div>
+    <div class="error-pill ${hasError ? "pill-warn" : "pill-ok"}">
+      <span class="pill-dot ${hasError ? "pill-dot-red" : "pill-dot-green"}"></span>
+      ${hasError ? d.error : "Ingen feil"}
     </div>
   </div>`;
 }
 
+function formatFull(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function formatHms(seconds) {
+  if (!seconds || seconds <= 0) return "0t";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return m > 0 ? `${h}t ${m}min` : `${h}t`;
+}
+
+// Reknar ut neste klippehending frå Cramer sin kalender (schedule-JSON).
+// Inne i eit aktivt vindauge -> "Klipper til HH:MM". Utanfor -> "Neste start ...".
 function cramerNextEvent(schedule) {
   if (!schedule || !schedule.weekDays1) return { label: "Neste start", value: "—" };
 
   const now    = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const todaySI = (now.getDay() + 6) % 7;
+  const todaySI = (now.getDay() + 6) % 7;   // 0=man .. 6=søn
 
   const fmt = (min) =>
     `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
@@ -437,12 +429,14 @@ function cramerNextEvent(schedule) {
     return wins.sort((a, b) => a.start - b.start);
   }
 
+  // Inne i eit vindauge i dag?
   for (const w of windows(todaySI)) {
     if (nowMin >= w.start && nowMin < w.end) {
       return { label: "Klipper til", value: fmt(w.end) };
     }
   }
 
+  // Finn neste start innan 7 dagar
   const WD = ["man", "tir", "ons", "tor", "fre", "lør", "søn"];
   for (let off = 0; off < 8; off++) {
     const si = (todaySI + off) % 7;
@@ -463,7 +457,7 @@ function cramerCard(d, cut) {
   const model     = d.model_description ?? d.model_name ?? "Cramer";
   const rawStatus = d.sub_status_text ?? "—";
   const label     = CRAMER_STATUS_LABELS[rawStatus] ?? rawStatus;
-  const color     = cramerStatusColor(rawStatus, d.is_online);
+  let   color     = cramerStatusColor(rawStatus, d.is_online);
   const pct       = d.battery ?? 0;
   const bColor    = batteryColor(pct);
   const offline   = !d.is_online;
@@ -472,6 +466,8 @@ function cramerCard(d, cut) {
   const last24H   = cut.last24h_s > 0 ? formatHms(cut.last24h_s) : "0t";
   const next      = cramerNextEvent(d.schedule);
   const hasError  = d.error_text && d.error_text.trim().length > 0;
+  // Frakobling eller reell feil → raud status-tekst (overstyrer grå/grøn)
+  if (offline || hasError) color = "#e53935";
 
   return `
   <div class="card">
@@ -524,20 +520,17 @@ function cramerCard(d, cut) {
 async function load() {
   const headers = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` };
 
-  const [husqRes, cramerRes, cramerCutRes, husqCutRes] = await Promise.all([
+  const [husqRes, cramerRes, cuttingRes] = await Promise.all([
     fetch(`${SUPA_URL}/rest/v1/husqvarna_status?select=*&order=mower_id`, { headers }),
     fetch(`${SUPA_URL}/rest/v1/cramer_status?select=*`, { headers }),
     fetch(`${SUPA_URL}/rest/v1/cramer_cutting_times?select=*`, { headers }),
-    fetch(`${SUPA_URL}/rest/v1/husqvarna_cutting_times?select=*`, { headers }),
   ]);
 
-  const mowers    = await husqRes.json();
-  const cramers   = await cramerRes.json();
-  const cramerCut = await cramerCutRes.json();
-  const husqCut   = await husqCutRes.json();
+  const mowers  = await husqRes.json();
+  const cramers = await cramerRes.json();
+  const cutting = await cuttingRes.json();
 
-  const cramerCutMap = Object.fromEntries((cramerCut || []).map(c => [c.mower_id, c]));
-  const husqCutMap   = Object.fromEntries((husqCut   || []).map(c => [c.mower_id, c]));
+  const cuttingMap = Object.fromEntries((cutting || []).map(c => [c.mower_id, c]));
 
   if (!mowers.length && !cramers.length) {
     document.getElementById("main").innerHTML = '<div id="loading">Ingen data funnet.</div>';
@@ -554,8 +547,8 @@ async function load() {
   mowers.sort((a, b) => MOWER_ORDER.indexOf(a.mower_id) - MOWER_ORDER.indexOf(b.mower_id));
 
   document.getElementById("main").innerHTML = [
-    ...mowers.map(m => mowerCard(m, husqCutMap[m.mower_id] || {})),
-    ...cramers.map(c => cramerCard(c, cramerCutMap[c.mower_id] || {})),
+    ...mowers.map(mowerCard),
+    ...cramers.map(c => cramerCard(c, cuttingMap[c.mower_id] || {})),
   ].join("");
 }
 
