@@ -289,9 +289,13 @@ function byggBadeKort(){
           <span class="bade-merkelapp" id="merke-${i}" style="background:#cfcfcf">—</span>
           <span class="bade-oppd" id="oppd-${i}"></span>
         </div>
-        ${s.badevannKey ? `<div class="bade-vannkval" id="badevann-${i}"></div>` : ``}
+        ${s.badevannKey
+          ? `<div class="bade-vannkval" id="badevann-${i}"></div>`
+          : `<div class="bade-vannkval" aria-hidden="true" style="visibility:hidden"><div class="bv-status"><span class="bv-prikk"></span>Badevannskvalitet: God</div></div>`}
         <div class="bade-kilde">Kilde: ${s.kilde}</div>
-        ${s.badevannKey ? `<div class="bade-kilde" id="badevann-kilde-${i}"></div>` : ``}
+        ${s.badevannKey
+          ? `<div class="bade-kilde" id="badevann-kilde-${i}"></div>`
+          : `<div class="bade-kilde" aria-hidden="true" style="visibility:hidden">Kilde badevann: —</div>`}
       </div>
       <div class="bolge"></div>`;
     grid.appendChild(el);
