@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sommerdager i Siljan</title>
+<style>
+  /* ---------- Fargepalett henta frå festivalplakaten ---------- */
+  :root{
+    --himmel:      #5DB7E0;   /* himmelblå */
+    --himmel-lys:  #9BD8F0;
+    --sol:         #FFC93C;   /* sol-gul */
+    --sol-djup:    #F4A93C;
+    --sand:        #F6CE9E;   /* ørken/sand */
+    --sand-lys:    #FBE3C4;
+    --korall:      #F0656B;   /* "Fredag"-raud */
+    --lilla:       #B95C9D;   /* "Lørdag"-lilla */
+    --teal:        #45B79C;   /* "Søndag"-grøn */
+    --krem:        #FFF6E9;   /* bakgrunn */
+    --blekk:       #3E2F2A;   /* mørk varm brun tekst */
+    --blekk-mjuk:  #7A675E;
+    --kort-skugge: 0 10px 30px rgba(62,47,42,.12);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    color:var(--blekk);
+    background:
+      radial-gradient(1200px 600px at 80% -10%, var(--himmel-lys), transparent 60%),
+      linear-gradient(180deg, var(--himmel) 0%, var(--krem) 38%, var(--krem) 100%);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+
+  /* ---------- 16:9 infoskjerm-ramme (1920x1080) ---------- */
+  .skjerm{
+    width:min(100vw,1920px);
+    margin:0 auto;
+    padding:clamp(18px,2.6vw,48px);
+    display:flex;
+    flex-direction:column;
+    gap:clamp(16px,1.8vw,32px);
+    min-height:100vh;
+  }
+
+  /* ---------- Topptekst ---------- */
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:24px;flex-wrap:wrap;
+  }
+  .merke{display:flex;align-items:center;gap:18px}
+  .sol-ikon{
+    width:clamp(56px,5vw,86px);height:clamp(56px,5vw,86px);
+    border-radius:50%;
+    background:radial-gradient(circle at 38% 34%, #FFE07A, var(--sol) 55%, var(--sol-djup));
+    box-shadow:0 0 0 8px rgba(255,201,60,.25), 0 10px 24px rgba(244,169,60,.45);
+    position:relative;flex-shrink:0;
+  }
+  .tittel h1{
+    font-size:clamp(1.7rem,3.4vw,3.4rem);
+    font-weight:800;letter-spacing:-.02em;line-height:1;
+    color:var(--korall);
+  }
+  .tittel .under{
+    font-size:clamp(.8rem,1.3vw,1.25rem);
+    color:var(--teal);font-weight:700;margin-top:6px;
+  }
+  .klokke{text-align:right}
+  .klokke .tid{font-size:clamp(1.6rem,2.8vw,2.8rem);font-weight:800;line-height:1;color:var(--blekk)}
+  .klokke .dato{font-size:clamp(.75rem,1.1vw,1.05rem);color:var(--blekk-mjuk);text-transform:capitalize;margin-top:4px}
+
+  /* ---------- Seksjonstittel ---------- */
+  .seksjon-tittel{
+    font-size:clamp(.95rem,1.4vw,1.35rem);font-weight:800;
+    text-transform:uppercase;letter-spacing:.06em;
+    display:flex;align-items:center;gap:10px;color:var(--blekk);
+  }
+  .seksjon-tittel::after{content:"";flex:1;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--sol),transparent)}
+
+  /* ---------- Badetemp-kort (hovudelement) ---------- */
+  .bade-grid{
+    display:grid;gap:clamp(14px,1.6vw,28px);
+    grid-template-columns:repeat(3,1fr);
+  }
+  .bade-kort{
+    position:relative;overflow:hidden;
+    border-radius:26px;padding:clamp(20px,2vw,34px);
+    background:#fff;box-shadow:var(--kort-skugge);
+    min-height:clamp(220px,24vw,320px);
+    display:flex;flex-direction:column;justify-content:space-between;
+    border:2px solid rgba(93,183,224,.18);
+  }
+  .bade-kort .bolge{
+    position:absolute;left:0;right:0;bottom:0;height:42%;
+    background:linear-gradient(180deg, rgba(93,183,224,.10), rgba(69,183,156,.18));
+    border-radius:0 0 24px 24px;
+    z-index:0;
+  }
+  .bade-kort > *{position:relative;z-index:1}
+  .bade-namn{font-size:clamp(1.05rem,1.5vw,1.6rem);font-weight:800}
+  .bade-stad{font-size:clamp(.72rem,1vw,.95rem);color:var(--blekk-mjuk);margin-top:2px}
+  .bade-temp{
+    font-size:clamp(3rem,6vw,5.6rem);font-weight:800;line-height:.9;
+    letter-spacing:-.03em;display:flex;align-items:flex-start;gap:6px;
+  }
+  .bade-temp .grad{font-size:.42em;font-weight:700;margin-top:.3em}
+  .bade-merkelapp{
+    display:inline-block;align-self:flex-start;
+    padding:5px 14px;border-radius:999px;color:#fff;font-weight:700;
+    font-size:clamp(.7rem,.95vw,.95rem);
+  }
+  .bade-oppd{font-size:clamp(.66rem,.85vw,.82rem);color:var(--blekk-mjuk)}
+  .venter{color:var(--blekk-mjuk);font-style:italic;font-size:1rem}
+
+  /* ---------- Nedre rad: luft, vêr, sol, info ---------- */
+  .nede-grid{
+    display:grid;gap:clamp(14px,1.6vw,28px);
+    grid-template-columns:repeat(4,1fr);
+  }
+  .info-kort{
+    background:#fff;border-radius:22px;padding:clamp(16px,1.5vw,26px);
+    box-shadow:var(--kort-skugge);display:flex;flex-direction:column;gap:8px;
+    border-top:6px solid var(--sol);
+  }
+  .info-kort.luft{border-top-color:var(--korall)}
+  .info-kort.sol{border-top-color:var(--sol-djup)}
+  .info-kort.vaer{border-top-color:var(--himmel)}
+  .info-kort.fare{border-top-color:var(--teal)}
+  .info-kort.uv{border-top-color:var(--lilla)}
+  .info-kort.pollen{border-top-color:var(--teal)}
+  .pollen-rad{display:flex;justify-content:space-between;align-items:center;font-size:clamp(.78rem,1vw,.95rem)}
+  .pollen-namn{color:var(--blekk);font-weight:600}
+  .pollen-nivaa{padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;color:#fff}
+  .info-kort .etikett{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--blekk-mjuk);font-weight:700}
+  .info-kort .stor{font-size:clamp(1.8rem,3vw,2.8rem);font-weight:800;line-height:1}
+  .info-kort .liten{font-size:clamp(.78rem,1vw,.98rem);color:var(--blekk-mjuk)}
+  .sol-rad{display:flex;justify-content:space-between;gap:8px;font-size:clamp(.85rem,1.1vw,1.05rem);font-weight:700}
+  .sol-rad .lab{display:block;font-size:.7rem;color:var(--blekk-mjuk);font-weight:600;text-transform:uppercase}
+
+  footer{
+    text-align:center;color:var(--blekk-mjuk);font-size:clamp(.7rem,.95vw,.9rem);
+    padding-top:6px;
+  }
+  .bie{display:inline-block;animation:sveve 3s ease-in-out infinite}
+  @keyframes sveve{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-5px) rotate(4deg)}}
+
+  /* ---------- Mobil ---------- */
+  @media (max-width:1100px){
+    .bade-grid{grid-template-columns:1fr}
+    .nede-grid{grid-template-columns:1fr 1fr}
+  }
+  @media (max-width:560px){
+    .nede-grid{grid-template-columns:1fr}
+    header{justify-content:center;text-align:center}
+    .klokke{text-align:center;width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="skjerm">
+
+  <header>
+    <div class="merke">
+      <div class="sol-ikon"></div>
+      <div class="tittel">
+        <h1>Sommer i Siljan</h1>
+        <div class="under">Badetemperaturer &amp; vær · oppdateres direkte</div>
+      </div>
+    </div>
+    <div class="klokke">
+      <div class="tid" id="klokke">--:--</div>
+      <div class="dato" id="dato">—</div>
+    </div>
+  </header>
+
+  <section>
+    <div class="seksjon-tittel">🌊 Badetemperaturer</div>
+    <div class="bade-grid" id="bade-grid"><!-- kort genereres --></div>
+  </section>
+
+  <section>
+    <div class="seksjon-tittel">☀️ Vær i Siljan i dag</div>
+    <div class="nede-grid">
+      <div class="info-kort luft">
+        <div class="etikett">Lufttemperatur</div>
+        <div class="stor" id="luft-temp">—</div>
+        <div class="liten" id="luft-kjelde">Netatmo værstasjon</div>
+      </div>
+      <div class="info-kort uv">
+        <div class="etikett">UV-indeks nå</div>
+        <div class="stor" id="uv-verdi">—</div>
+        <div class="liten" id="uv-tekst">—</div>
+      </div>
+      <div class="info-kort sol">
+        <div class="etikett">Sol i dag</div>
+        <div class="sol-rad">
+          <div><span class="lab">Opp</span><span id="sol-opp">—</span></div>
+          <div><span class="lab">Ned</span><span id="sol-ned">—</span></div>
+        </div>
+        <div class="liten" id="dag-lengd">—</div>
+      </div>
+      <div class="info-kort pollen">
+        <div class="etikett">Pollen (Yr)</div>
+        <div id="pollen-liste" style="display:flex;flex-direction:column;gap:6px;margin-top:4px"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span class="bie">🐝</span> Siljan kommune · Sommer 2026 · data oppdateres automatisk
+  </footer>
+
+</div>
+
+<script>
+/* ====================================================================
+   KONFIGURASJON — fyll inn API-lenkene når dei er klare
+   ==================================================================== */
+const CONFIG = {
+  steder: [
+    { navn:"Øverbøtjønna", stad:"Siljan",
+      api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/badetemperatur" },
+    { navn:"Gorningen",    stad:"Gorningen badeplass",
+      api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-gorningen" },
+    { navn:"Heivannet",    stad:"Heivannet",
+      api:"https://badetemperaturer.yr.no/api/watertemperatures",
+      yrLocationId:"1-45565" },
+  ],
+  // Netatmo-temp pusha frå Home Assistant til Supabase (URL kjem):
+  luftApi: null,
+  // Yr lokasjons-ID for Siljan (UV, pollen, sol opp/ned):
+  yrLokasjon: "1-45455",
+  oppdaterMs: 5*60*1000   // 5 min
+};
+
+/* ---------- Hjelpefunksjoner ---------- */
+const $ = s => document.querySelector(s);
+
+function tempFarge(t){
+  if(t==null) return {bg:"#cfcfcf", txt:"Ingen data"};
+  if(t < 15)  return {bg:"#5DB7E0", txt:"Friskt"};
+  if(t < 18)  return {bg:"#45B79C", txt:"Kjølig"};
+  if(t < 21)  return {bg:"#7FB845", txt:"Behagelig"};
+  if(t < 24)  return {bg:"#F4A93C", txt:"Godt"};
+  return            {bg:"#F0656B", txt:"Badeklart!"};
+}
+
+function klokkeslett(iso){
+  if(!iso) return "";
+  return new Date(iso).toLocaleTimeString("no", {hour:"2-digit", minute:"2-digit"});
+}
+
+/* ---------- Bygg badetemperatur-kort ---------- */
+function byggBadeKort(){
+  const grid = $("#bade-grid");
+  grid.innerHTML = "";
+  CONFIG.steder.forEach((s,i)=>{
+    const el = document.createElement("div");
+    el.className = "bade-kort";
+    el.innerHTML = `
+      <div>
+        <div class="bade-namn">${s.navn}</div>
+        <div class="bade-stad">${s.stad}</div>
+      </div>
+      <div class="bade-temp" id="temp-${i}"><span class="venter">Henter data…</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <span class="bade-merkelapp" id="merke-${i}" style="background:#cfcfcf">—</span>
+        <span class="bade-oppd" id="oppd-${i}"></span>
+      </div>
+      <div class="bolge"></div>`;
+    grid.appendChild(el);
+  });
+}
+
+/* ---------- Hent badetemperaturer ---------- */
+async function hentBade(){
+  for(let i=0;i<CONFIG.steder.length;i++){
+    const s = CONFIG.steder[i];
+    const tempEl = $("#temp-"+i), merkeEl = $("#merke-"+i), oppdEl = $("#oppd-"+i);
+    if(!s.api){
+      tempEl.innerHTML = `<span class="venter">API kommer</span>`;
+      continue;
+    }
+    try{
+      const r = await fetch(s.api, {cache:"no-store"});
+      if(!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      let t, ts;
+      if(s.yrLocationId){
+        // Yr badetemperaturer: array av alle stasjoner
+        const arr = Array.isArray(j) ? j : [j];
+        const entry = arr.find(x=>x.locationId===s.yrLocationId);
+        t  = entry?.temperature;
+        ts = entry?.time;
+      } else {
+        // Supabase: {temperatur, rapportert} eller {sensors:{temp_water}, timestamp}
+        t  = j?.temperatur ?? j?.sensors?.temp_water;
+        ts = j?.rapportert ?? j?.timestamp;
+      }
+      const f = tempFarge(t);
+      if(t==null){ tempEl.innerHTML = `<span class="venter">Ingen data</span>`; continue; }
+      tempEl.innerHTML = `${Number(t).toFixed(1).replace('.',',')}<span class="grad">°C</span>`;
+      merkeEl.textContent = f.txt;
+      merkeEl.style.background = f.bg;
+      oppdEl.textContent = ts ? klokkeslett(ts) : "";
+    }catch(e){
+      tempEl.innerHTML = `<span class="venter">Ikke tilgjengelig</span>`;
+    }
+  }
+}
+
+/* ---------- Hent lufttemperatur (Netatmo via Supabase) ---------- */
+async function hentLuft(){
+  if(!CONFIG.luftApi){ return; }
+  try{
+    const r = await fetch(CONFIG.luftApi, {cache:"no-store"});
+    const j = await r.json();
+    const t = j?.sensors?.temp_air ?? j?.temperature;
+    $("#luft-temp").innerHTML = (t!=null) ? `${Number(t).toFixed(1).replace('.',',')} °C` : "—";
+    if(j?.timestamp) $("#luft-kjelde").textContent = "Netatmo · " + klokkeslett(j.timestamp);
+  }catch(e){}
+}
+
+/* ---------- Hent alt fra Yr: UV, sol, pollen ---------- */
+const YR_BASE = `https://www.yr.no/api/v0/locations/${CONFIG.yrLokasjon}`;
+
+const UV_TEKST  = ["Lav","Lav","Lav","Moderat","Moderat","Moderat","Høy","Høy","Svært høy","Svært høy","Svært høy","Ekstrem"];
+const UV_FARGE  = ["#45B79C","#45B79C","#45B79C","#F4A93C","#F4A93C","#F4A93C","#F0656B","#F0656B","#B95C9D","#B95C9D","#B95C9D","#3E2F2A"];
+const POLLEN_FARGE = {
+  "Ingen":       "#aaa",
+  "Ubetydelig":  "#7FB845",
+  "Beskjeden":   "#F4A93C",
+  "Moderat":     "#F0656B",
+  "Betydelig":   "#B95C9D",
+  "Sterk":       "#3E2F2A",
+};
+
+async function hentYr(){
+  const fmt = iso => iso ? new Date(iso).toLocaleTimeString("no",{hour:"2-digit",minute:"2-digit"}) : "—";
+
+  // --- UV-indeks + lufttemp (fallback) fra forecast ---
+  try{
+    const r = await fetch(YR_BASE+"/forecast", {cache:"no-store"});
+    const j = await r.json();
+    const now = new Date();
+    const intervals = j.shortIntervals || [];
+    const interval = intervals.find(x => new Date(x.start) <= now && new Date(x.end) > now)
+                  || intervals[0];
+    const uv = interval?.uvIndex?.value;
+    if(uv != null){
+      const idx = Math.min(Math.floor(uv), 11);
+      $("#uv-verdi").textContent = Number(uv).toFixed(1).replace(".",",");
+      $("#uv-tekst").textContent = UV_TEKST[idx];
+      $("#uv-verdi").style.color = UV_FARGE[idx];
+    }
+    if(!CONFIG.luftApi){
+      const t = interval?.temperature?.value;
+      if(t != null){
+        $("#luft-temp").innerHTML = `${Number(t).toFixed(1).replace(".",",")} °C`;
+        $("#luft-kjelde").textContent = "Yr.no · Siljan";
+      }
+    }
+  }catch(e){ console.warn("Yr forecast feil:", e); }
+
+  // --- Sol opp/ned fra celestialevents ---
+  try{
+    const r = await fetch(YR_BASE+"/celestialevents", {cache:"no-store"});
+    const j = await r.json();
+    const dagStart = new Date(); dagStart.setHours(0,0,0,0);
+    const dagSlutt = new Date(); dagSlutt.setHours(23,59,59,999);
+    const solEvents = (j.events||[]).filter(e =>
+      e.body === "Sun" &&
+      new Date(e.time) >= dagStart &&
+      new Date(e.time) <= dagSlutt
+    );
+    const opp = solEvents.find(e => e.type === "Rise")?.time;
+    const ned = solEvents.find(e => e.type === "Set")?.time;
+    $("#sol-opp").textContent = fmt(opp);
+    $("#sol-ned").textContent = fmt(ned);
+    if(opp && ned){
+      const mins = Math.round((new Date(ned) - new Date(opp)) / 60000);
+      $("#dag-lengd").textContent = `Dagslengde ${Math.floor(mins/60)} t ${mins%60} min`;
+    }
+  }catch(e){ console.warn("Yr celestialevents feil:", e); }
+
+  // --- Pollen fra NAAF via Yr ---
+  try{
+    const r = await fetch(YR_BASE+"/pollen", {cache:"no-store"});
+    const j = await r.json();
+    const liste = $("#pollen-liste");
+    liste.innerHTML = "";
+    // Struktur: j._embedded.pollenForecast[0].distributions.{low,moderate,...}
+    const distributions = j?._embedded?.pollenForecast?.[0]?.distributions;
+    if(distributions && Object.keys(distributions).length){
+      Object.values(distributions).forEach(dist => {
+        const nivaa = dist.distributionName || "—";
+        const navn  = (dist.pollenTypes || []).map(p => p.name).join(" & ");
+        const farge = POLLEN_FARGE[nivaa] || "#aaa";
+        const rad = document.createElement("div");
+        rad.className = "pollen-rad";
+        rad.innerHTML = `<span class="pollen-namn">${navn}</span>
+          <span class="pollen-nivaa" style="background:${farge}">${nivaa}</span>`;
+        liste.appendChild(rad);
+      });
+    } else {
+      liste.innerHTML = `<span style="color:var(--blekk-mjuk);font-size:.85rem">Ingen pollendata</span>`;
+    }
+  }catch(e){
+    console.warn("Yr pollen feil:", e);
+    $("#pollen-liste").innerHTML = `<span style="color:var(--blekk-mjuk);font-size:.85rem">—</span>`;
+  }
+}
+
+/* ---------- Klokke ---------- */
+function tikk(){
+  const n=new Date();
+  $("#klokke").textContent=n.toLocaleTimeString("no",{hour:"2-digit",minute:"2-digit"});
+  $("#dato").textContent=n.toLocaleDateString("no",{weekday:"long",day:"numeric",month:"long"});
+}
+
+/* ---------- Oppstart ---------- */
+byggBadeKort();
+tikk(); setInterval(tikk, 30000);
+hentBade(); hentLuft(); hentYr();
+setInterval(() => { hentBade(); hentLuft(); hentYr(); }, CONFIG.oppdaterMs);
+</script>
+</body>
+</html>
