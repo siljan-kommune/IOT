@@ -115,7 +115,6 @@
   .bade-vannkval{margin-top:8px}
   .bade-vannkval .bv-status{display:flex;align-items:center;gap:7px;font-size:clamp(.72rem,.95vw,.9rem);color:var(--blekk);font-weight:600}
   .bade-vannkval .bv-prikk{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
-  .bade-vannkval .bv-kilde{font-size:clamp(.58rem,.74vw,.7rem);color:var(--blekk-mjuk);opacity:.75;margin-top:2px;padding-left:18px}
   .bade-kilde{font-size:clamp(.6rem,.78vw,.74rem);color:var(--blekk-mjuk);opacity:.75;margin-top:6px}
   .venter{color:var(--blekk-mjuk);font-style:italic;font-size:1rem}
 
@@ -289,6 +288,7 @@ function byggBadeKort(){
         </div>
         ${s.badevannKey ? `<div class="bade-vannkval" id="badevann-${i}"></div>` : ``}
         <div class="bade-kilde">Kilde: ${s.kilde}</div>
+        ${s.badevannKey ? `<div class="bade-kilde" id="badevann-kilde-${i}"></div>` : ``}
       </div>
       <div class="bolge"></div>`;
     grid.appendChild(el);
@@ -349,8 +349,9 @@ async function hentBadevann(){
         const kilde = j?.kilde || "Miljørettet helsevern i Grenland";
         el.innerHTML =
           `<div class="bv-status"><span class="bv-prikk" style="background:${d.farge||'#aaa'}"></span>` +
-          `Badevannskvalitet: <strong style="margin-left:2px">${d.kvalitet}</strong></div>` +
-          `<div class="bv-kilde">Kilde: ${kilde}</div>`;
+          `Badevannskvalitet: <strong style="margin-left:2px">${d.kvalitet}</strong></div>`;
+        const kildeEl = $("#badevann-kilde-"+i);
+        if(kildeEl) kildeEl.textContent = `Kilde badevann: ${kilde}`;
       }
     });
   }catch(e){ console.warn("Badevann feil:", e); }
