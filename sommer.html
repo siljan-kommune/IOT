@@ -111,6 +111,7 @@
     padding:5px 14px;border-radius:999px;color:#fff;font-weight:700;
     font-size:clamp(.7rem,.95vw,.95rem);
   }
+  .bade-under{font-size:clamp(.8rem,1.05vw,1.05rem);font-weight:600;color:var(--blekk);font-style:italic;margin-top:6px;min-height:1.2em}
   .bade-oppd{font-size:clamp(.66rem,.85vw,.82rem);color:var(--blekk-mjuk)}
   .bade-vannkval{margin-top:8px}
   .bade-vannkval .bv-status{display:flex;align-items:center;gap:7px;font-size:clamp(.72rem,.95vw,.9rem);color:var(--blekk);font-weight:600}
@@ -247,12 +248,12 @@ const $ = s => document.querySelector(s);
 
 function tempFarge(t){
   // tekster synkronisert med badetemp-overbotjonna.html; varmt = grønt
-  if(t==null) return {bg:"#cfcfcf", txt:"Ingen data"};
-  if(t < 10)  return {bg:"#4FA8D8", txt:"Iskaldt!"};
-  if(t < 15)  return {bg:"#45B79C", txt:"Friskt!"};
-  if(t < 18)  return {bg:"#7FB845", txt:"Behagelig"};
-  if(t < 22)  return {bg:"#57B84A", txt:"Deilig!"};
-  return            {bg:"#2E9E54", txt:"Tropisk!"};
+  if(t==null) return {bg:"#cfcfcf", txt:"Ingen data", under:""};
+  if(t < 10)  return {bg:"#4FA8D8", txt:"Iskaldt!",   under:"Kun for de tøffeste"};
+  if(t < 15)  return {bg:"#45B79C", txt:"Friskt!",    under:"Forfriskende bad"};
+  if(t < 18)  return {bg:"#7FB845", txt:"Behagelig",  under:"Fint badevann"};
+  if(t < 22)  return {bg:"#57B84A", txt:"Deilig!",    under:"Perfekt badetemperatur"};
+  return            {bg:"#2E9E54", txt:"Tropisk!",   under:"Hopp rett uti!"};
 }
 
 function klokkeslett(iso){
@@ -281,6 +282,7 @@ function byggBadeKort(){
         <div class="bade-stad">${s.stad}</div>
       </div>
       <div class="bade-temp" id="temp-${i}"><span class="venter">Henter data…</span></div>
+      <div class="bade-under" id="under-${i}"></div>
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
           <span class="bade-merkelapp" id="merke-${i}" style="background:#cfcfcf">—</span>
@@ -299,7 +301,7 @@ function byggBadeKort(){
 async function hentBade(){
   for(let i=0;i<CONFIG.steder.length;i++){
     const s = CONFIG.steder[i];
-    const tempEl = $("#temp-"+i), merkeEl = $("#merke-"+i), oppdEl = $("#oppd-"+i);
+    const tempEl = $("#temp-"+i), merkeEl = $("#merke-"+i), oppdEl = $("#oppd-"+i), underEl = $("#under-"+i);
     if(!s.api){
       tempEl.innerHTML = `<span class="venter">API kommer</span>`;
       continue;
@@ -325,6 +327,7 @@ async function hentBade(){
       tempEl.innerHTML = `${Number(t).toFixed(1).replace('.',',')}<span class="grad">°C</span>`;
       merkeEl.textContent = f.txt;
       merkeEl.style.background = f.bg;
+      if(underEl) underEl.textContent = f.under || "";
       oppdEl.textContent = ts ? tidsstempel(ts) : "";
     }catch(e){
       tempEl.innerHTML = `<span class="venter">Ikke tilgjengelig</span>`;
