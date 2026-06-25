@@ -112,6 +112,7 @@
     font-size:clamp(.7rem,.95vw,.95rem);
   }
   .bade-oppd{font-size:clamp(.66rem,.85vw,.82rem);color:var(--blekk-mjuk)}
+  .bade-kilde{font-size:clamp(.6rem,.78vw,.74rem);color:var(--blekk-mjuk);opacity:.75;margin-top:6px}
   .venter{color:var(--blekk-mjuk);font-style:italic;font-size:1rem}
 
   /* ---------- Nedre rad: luft, vêr, sol, info ---------- */
@@ -220,17 +221,19 @@
    ==================================================================== */
 const CONFIG = {
   steder: [
-    { navn:"Øverbøtjønna", stad:"Siljan",
+    { navn:"Øverbøtjønna", stad:"Siljan", kilde:"Siljan kommune",
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/badetemperatur" },
-    { navn:"Gorningen",    stad:"Gorningen badeplass",
+    { navn:"Gorningen",    stad:"Gorningen badeplass", kilde:"Siljan kommune",
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-gorningen" },
-    { navn:"Heivannet",    stad:"Heivannet",
+    { navn:"Heivannet",    stad:"Heivannet", kilde:"yr.no",
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-heivannet" },
   ],
   // Netatmo-temp pusha frå Home Assistant til Supabase (URL kjem):
   luftApi: null,
-  // Yr lokasjons-ID for Siljan (UV, pollen, sol opp/ned):
-  yrLokasjon: "1-45455",
+  // Pollen via proxy-funksjon (NAAF-data, server-side henta frå Yr):
+  pollenApi: "https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-pollen",
+  // Koordinatar Siljan sentrum (UV + sol opp/ned frå api.met.no):
+  lat: 59.30, lon: 9.78,
   oppdaterMs: 5*60*1000   // 5 min
 };
 
@@ -251,6 +254,14 @@ function klokkeslett(iso){
   return new Date(iso).toLocaleTimeString("no", {hour:"2-digit", minute:"2-digit"});
 }
 
+function tidsstempel(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  const dato = d.toLocaleDateString("no", {day:"numeric", month:"short"});
+  const tid  = d.toLocaleTimeString("no", {hour:"2-digit", minute:"2-digit"});
+  return `${dato} kl ${tid}`;
+}
+
 /* ---------- Bygg badetemperatur-kort ---------- */
 function byggBadeKort(){
   const grid = $("#bade-grid");
@@ -264,9 +275,12 @@ function byggBadeKort(){
         <div class="bade-stad">${s.stad}</div>
       </div>
       <div class="bade-temp" id="temp-${i}"><span class="venter">Henter data…</span></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-        <span class="bade-merkelapp" id="merke-${i}" style="background:#cfcfcf">—</span>
-        <span class="bade-oppd" id="oppd-${i}"></span>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <span class="bade-merkelapp" id="merke-${i}" style="background:#cfcfcf">—</span>
+          <span class="bade-oppd" id="oppd-${i}"></span>
+        </div>
+        <div class="bade-kilde">Kilde: ${s.kilde}</div>
       </div>
       <div class="bolge"></div>`;
     grid.appendChild(el);
@@ -303,7 +317,7 @@ async function hentBade(){
       tempEl.innerHTML = `${Number(t).toFixed(1).replace('.',',')}<span class="grad">°C</span>`;
       merkeEl.textContent = f.txt;
       merkeEl.style.background = f.bg;
-      oppdEl.textContent = ts ? klokkeslett(ts) : "";
+      oppdEl.textContent = ts ? tidsstempel(ts) : "";
     }catch(e){
       tempEl.innerHTML = `<span class="venter">Ikke tilgjengelig</span>`;
     }
@@ -322,8 +336,9 @@ async function hentLuft(){
   }catch(e){}
 }
 
-/* ---------- Hent alt fra Yr: UV, sol, pollen ---------- */
-const YR_BASE = `https://www.yr.no/api/v0/locations/${CONFIG.yrLokasjon}`;
+/* ---------- Vær: UV + sol direkte fra api.met.no (har CORS), pollen via proxy ---------- */
+const MET_FORECAST = `https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${CONFIG.lat}&lon=${CONFIG.lon}`;
+const MET_SUN = `https://api.met.no/weatherapi/sunrise/3.0/sun?lat=${CONFIG.lat}&lon=${CONFIG.lon}`;
 
 const UV_TEKST  = ["Lav","Lav","Lav","Moderat","Moderat","Moderat","Høy","Høy","Svært høy","Svært høy","Svært høy","Ekstrem"];
 const UV_FARGE  = ["#45B79C","#45B79C","#45B79C","#F4A93C","#F4A93C","#F4A93C","#F0656B","#F0656B","#B95C9D","#B95C9D","#B95C9D","#3E2F2A"];
@@ -336,78 +351,75 @@ const POLLEN_FARGE = {
   "Sterk":       "#3E2F2A",
 };
 
-async function hentYr(){
+async function hentVaer(){
   const fmt = iso => iso ? new Date(iso).toLocaleTimeString("no",{hour:"2-digit",minute:"2-digit"}) : "—";
 
-  // --- UV-indeks + lufttemp (fallback) fra forecast ---
+  // --- UV-indeks + lufttemp (fallback) fra api.met.no ---
   try{
-    const r = await fetch(YR_BASE+"/forecast", {cache:"no-store"});
+    const r = await fetch(MET_FORECAST, {cache:"no-store"});
     const j = await r.json();
-    const now = new Date();
-    const intervals = j.shortIntervals || [];
-    const interval = intervals.find(x => new Date(x.start) <= now && new Date(x.end) > now)
-                  || intervals[0];
-    const uv = interval?.uvIndex?.value;
+    const serie = j?.properties?.timeseries || [];
+    const now = Date.now();
+    // nærmeste tidspunkt til nå
+    const naa = serie.reduce((best, x) =>
+      Math.abs(new Date(x.time) - now) < Math.abs(new Date(best.time) - now) ? x : best
+    , serie[0]);
+    const det = naa?.data?.instant?.details || {};
+    const uv = det.ultraviolet_index_clear_sky;
     if(uv != null){
-      const idx = Math.min(Math.floor(uv), 11);
+      const idx = Math.min(Math.round(uv), 11);
       $("#uv-verdi").textContent = Number(uv).toFixed(1).replace(".",",");
       $("#uv-tekst").textContent = UV_TEKST[idx];
       $("#uv-verdi").style.color = UV_FARGE[idx];
     }
     if(!CONFIG.luftApi){
-      const t = interval?.temperature?.value;
+      const t = det.air_temperature;
       if(t != null){
         $("#luft-temp").innerHTML = `${Number(t).toFixed(1).replace(".",",")} °C`;
-        $("#luft-kjelde").textContent = "Yr.no · Siljan";
+        $("#luft-kjelde").textContent = "Yr / met.no · Siljan";
       }
     }
-  }catch(e){ console.warn("Yr forecast feil:", e); }
+  }catch(e){ console.warn("met.no forecast feil:", e); }
 
-  // --- Sol opp/ned fra celestialevents ---
+  // --- Sol opp/ned fra api.met.no sunrise 3.0 ---
   try{
-    const r = await fetch(YR_BASE+"/celestialevents", {cache:"no-store"});
+    const d = new Date();
+    const dato = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const r = await fetch(`${MET_SUN}&date=${dato}&offset=+02:00`, {cache:"no-store"});
     const j = await r.json();
-    const dagStart = new Date(); dagStart.setHours(0,0,0,0);
-    const dagSlutt = new Date(); dagSlutt.setHours(23,59,59,999);
-    const solEvents = (j.events||[]).filter(e =>
-      e.body === "Sun" &&
-      new Date(e.time) >= dagStart &&
-      new Date(e.time) <= dagSlutt
-    );
-    const opp = solEvents.find(e => e.type === "Rise")?.time;
-    const ned = solEvents.find(e => e.type === "Set")?.time;
+    const opp = j?.properties?.sunrise?.time;
+    const ned = j?.properties?.sunset?.time;
     $("#sol-opp").textContent = fmt(opp);
     $("#sol-ned").textContent = fmt(ned);
     if(opp && ned){
       const mins = Math.round((new Date(ned) - new Date(opp)) / 60000);
       $("#dag-lengd").textContent = `Dagslengde ${Math.floor(mins/60)} t ${mins%60} min`;
     }
-  }catch(e){ console.warn("Yr celestialevents feil:", e); }
+  }catch(e){ console.warn("met.no sunrise feil:", e); }
 
-  // --- Pollen fra NAAF via Yr ---
+  // --- Pollen via proxy-funksjon (NAAF-data fra Yr, server-side) ---
+  if(!CONFIG.pollenApi) return;
   try{
-    const r = await fetch(YR_BASE+"/pollen", {cache:"no-store"});
+    const r = await fetch(CONFIG.pollenApi, {cache:"no-store"});
     const j = await r.json();
     const liste = $("#pollen-liste");
     liste.innerHTML = "";
-    // Struktur: j._embedded.pollenForecast[0].distributions.{low,moderate,...}
-    const distributions = j?._embedded?.pollenForecast?.[0]?.distributions;
-    if(distributions && Object.keys(distributions).length){
-      Object.values(distributions).forEach(dist => {
-        const nivaa = dist.distributionName || "—";
-        const navn  = (dist.pollenTypes || []).map(p => p.name).join(" & ");
-        const farge = POLLEN_FARGE[nivaa] || "#aaa";
+    // Proxy returnerer: { pollen: [{navn, nivaa}, ...] }
+    const pollen = j?.pollen || [];
+    if(pollen.length){
+      pollen.forEach(p => {
+        const farge = POLLEN_FARGE[p.nivaa] || "#aaa";
         const rad = document.createElement("div");
         rad.className = "pollen-rad";
-        rad.innerHTML = `<span class="pollen-namn">${navn}</span>
-          <span class="pollen-nivaa" style="background:${farge}">${nivaa}</span>`;
+        rad.innerHTML = `<span class="pollen-namn">${p.navn}</span>
+          <span class="pollen-nivaa" style="background:${farge}">${p.nivaa}</span>`;
         liste.appendChild(rad);
       });
     } else {
       liste.innerHTML = `<span style="color:var(--blekk-mjuk);font-size:.85rem">Ingen pollendata</span>`;
     }
   }catch(e){
-    console.warn("Yr pollen feil:", e);
+    console.warn("Pollen feil:", e);
     $("#pollen-liste").innerHTML = `<span style="color:var(--blekk-mjuk);font-size:.85rem">—</span>`;
   }
 }
@@ -422,8 +434,8 @@ function tikk(){
 /* ---------- Oppstart ---------- */
 byggBadeKort();
 tikk(); setInterval(tikk, 30000);
-hentBade(); hentLuft(); hentYr();
-setInterval(() => { hentBade(); hentLuft(); hentYr(); }, CONFIG.oppdaterMs);
+hentBade(); hentLuft(); hentVaer();
+setInterval(() => { hentBade(); hentLuft(); hentVaer(); }, CONFIG.oppdaterMs);
 </script>
 </body>
 </html>
