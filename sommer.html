@@ -112,6 +112,10 @@
     font-size:clamp(.7rem,.95vw,.95rem);
   }
   .bade-oppd{font-size:clamp(.66rem,.85vw,.82rem);color:var(--blekk-mjuk)}
+  .bade-vannkval{margin-top:8px}
+  .bade-vannkval .bv-status{display:flex;align-items:center;gap:7px;font-size:clamp(.72rem,.95vw,.9rem);color:var(--blekk);font-weight:600}
+  .bade-vannkval .bv-prikk{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+  .bade-vannkval .bv-kilde{font-size:clamp(.58rem,.74vw,.7rem);color:var(--blekk-mjuk);opacity:.75;margin-top:2px;padding-left:18px}
   .bade-kilde{font-size:clamp(.6rem,.78vw,.74rem);color:var(--blekk-mjuk);opacity:.75;margin-top:6px}
   .venter{color:var(--blekk-mjuk);font-style:italic;font-size:1rem}
 
@@ -221,15 +225,17 @@
    ==================================================================== */
 const CONFIG = {
   steder: [
-    { navn:"Øverbøtjønna", stad:"Siljan", kilde:"Siljan kommune",
+    { navn:"Øverbøtjønna", stad:"Siljan", kilde:"Siljan kommune", badevannKey:"overbotjonn",
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/badetemperatur" },
     { navn:"Gorningen",    stad:"Gorningen badeplass", kilde:"Siljan kommune",
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-gorningen" },
-    { navn:"Heivannet",    stad:"Heivannet", kilde:"yr.no",
+    { navn:"Heivannet",    stad:"Heivannet", kilde:"yr.no", badevannKey:"heivannet",
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-heivannet" },
   ],
   // Netatmo-temp pusha frå Home Assistant til Supabase (URL kjem):
   luftApi: null,
+  // Badevannskvalitet (Miljørettet helsevern i Grenland, skrapa frå Porsgrunn kommune):
+  badevannApi: "https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-badevann",
   // Pollen via proxy-funksjon (NAAF-data, server-side henta frå Yr):
   pollenApi: "https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-pollen",
   // Koordinatar Siljan sentrum (UV + sol opp/ned frå api.met.no):
@@ -241,12 +247,13 @@ const CONFIG = {
 const $ = s => document.querySelector(s);
 
 function tempFarge(t){
+  // tekster synkronisert med badetemp-overbotjonna.html; varmt = grønt
   if(t==null) return {bg:"#cfcfcf", txt:"Ingen data"};
-  if(t < 15)  return {bg:"#5DB7E0", txt:"Friskt"};
-  if(t < 18)  return {bg:"#45B79C", txt:"Kjølig"};
-  if(t < 21)  return {bg:"#7FB845", txt:"Behagelig"};
-  if(t < 24)  return {bg:"#F4A93C", txt:"Godt"};
-  return            {bg:"#F0656B", txt:"Badeklart!"};
+  if(t < 10)  return {bg:"#4FA8D8", txt:"Iskaldt!"};
+  if(t < 15)  return {bg:"#45B79C", txt:"Friskt!"};
+  if(t < 18)  return {bg:"#7FB845", txt:"Behagelig"};
+  if(t < 22)  return {bg:"#57B84A", txt:"Deilig!"};
+  return            {bg:"#2E9E54", txt:"Tropisk!"};
 }
 
 function klokkeslett(iso){
@@ -280,6 +287,7 @@ function byggBadeKort(){
           <span class="bade-merkelapp" id="merke-${i}" style="background:#cfcfcf">—</span>
           <span class="bade-oppd" id="oppd-${i}"></span>
         </div>
+        ${s.badevannKey ? `<div class="bade-vannkval" id="badevann-${i}"></div>` : ``}
         <div class="bade-kilde">Kilde: ${s.kilde}</div>
       </div>
       <div class="bolge"></div>`;
@@ -322,6 +330,30 @@ async function hentBade(){
       tempEl.innerHTML = `<span class="venter">Ikke tilgjengelig</span>`;
     }
   }
+}
+
+/* ---------- Hent badevannskvalitet (Miljørettet helsevern, via proxy) ---------- */
+async function hentBadevann(){
+  if(!CONFIG.badevannApi) return;
+  const harBadevann = CONFIG.steder.some(s => s.badevannKey);
+  if(!harBadevann) return;
+  try{
+    const r = await fetch(CONFIG.badevannApi, {cache:"no-store"});
+    const j = await r.json();
+    CONFIG.steder.forEach((s,i)=>{
+      if(!s.badevannKey) return;
+      const el = $("#badevann-"+i);
+      if(!el) return;
+      const d = j?.steder?.[s.badevannKey];
+      if(d && d.kvalitet){
+        const kilde = j?.kilde || "Miljørettet helsevern i Grenland";
+        el.innerHTML =
+          `<div class="bv-status"><span class="bv-prikk" style="background:${d.farge||'#aaa'}"></span>` +
+          `Badevannskvalitet: <strong style="margin-left:2px">${d.kvalitet}</strong></div>` +
+          `<div class="bv-kilde">Kilde: ${kilde}</div>`;
+      }
+    });
+  }catch(e){ console.warn("Badevann feil:", e); }
 }
 
 /* ---------- Hent lufttemperatur (Netatmo via Supabase) ---------- */
@@ -434,8 +466,8 @@ function tikk(){
 /* ---------- Oppstart ---------- */
 byggBadeKort();
 tikk(); setInterval(tikk, 30000);
-hentBade(); hentLuft(); hentVaer();
-setInterval(() => { hentBade(); hentLuft(); hentVaer(); }, CONFIG.oppdaterMs);
+hentBade(); hentBadevann(); hentLuft(); hentVaer();
+setInterval(() => { hentBade(); hentBadevann(); hentLuft(); hentVaer(); }, CONFIG.oppdaterMs);
 </script>
 </body>
 </html>
