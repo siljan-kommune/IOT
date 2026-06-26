@@ -118,6 +118,8 @@
   .bade-vannkval .bv-status{display:flex;align-items:center;gap:7px;font-size:clamp(.72rem,.95vw,.9rem);color:var(--blekk);font-weight:600}
   .bade-vannkval .bv-prikk{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
   .bade-kilde{font-size:clamp(.6rem,.78vw,.74rem);color:var(--blekk-mjuk);opacity:.75;margin-top:6px}
+  .bade-kilde a{color:var(--himmel);text-decoration:underline;text-underline-offset:2px}
+  .bade-kilde a:hover{color:var(--korall)}
   .venter{color:var(--blekk-mjuk);font-style:italic;font-size:1rem}
 
   /* ---------- Nedre rad: luft, vêr, sol, info ---------- */
@@ -359,7 +361,9 @@ async function hentBadevann(){
           `<div class="bv-status"><span class="bv-prikk" style="background:${d.farge||'#aaa'}"></span>` +
           `Badevannskvalitet: <strong style="margin-left:2px">${d.kvalitet}</strong></div>`;
         const kildeEl = $("#badevann-kilde-"+i);
-        if(kildeEl) kildeEl.textContent = `Kilde badevann: ${kilde}`;
+        if(kildeEl) kildeEl.innerHTML =
+          `Kilde badevann: <a href="https://www.porsgrunn.kommune.no/badevannet-i-porsgrunn/" ` +
+          `target="_blank" rel="noopener">${kilde}</a>`;
       }
     });
   }catch(e){ console.warn("Badevann feil:", e); }
