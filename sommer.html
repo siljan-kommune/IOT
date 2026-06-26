@@ -194,7 +194,7 @@
       <div class="info-kort luft">
         <div class="etikett">Lufttemperatur</div>
         <div class="stor" id="luft-temp">—</div>
-        <div class="liten" id="luft-kjelde">Netatmo værstasjon</div>
+        <div class="liten" id="luft-kjelde">Siljan kommune</div>
       </div>
       <div class="info-kort uv">
         <div class="etikett">UV-indeks nå</div>
@@ -235,8 +235,8 @@ const CONFIG = {
     { navn:"Heivannet",    stad:"Heivannet", kilde:"yr.no", badevannKey:"heivannet",
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-heivannet" },
   ],
-  // Netatmo-temp pusha frå Home Assistant til Supabase (URL kjem):
-  luftApi: null,
+  // Lufttemp: Netatmo pusha frå Home Assistant → Supabase → api-netatmo:
+  luftApi: "https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-netatmo",
   // Badevannskvalitet (Miljørettet helsevern i Grenland, skrapa frå Porsgrunn kommune):
   badevannApi: "https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-badevann",
   // Pollen via proxy-funksjon (NAAF-data, server-side henta frå Yr):
@@ -375,9 +375,11 @@ async function hentLuft(){
   try{
     const r = await fetch(CONFIG.luftApi, {cache:"no-store"});
     const j = await r.json();
-    const t = j?.sensors?.temp_air ?? j?.temperature;
-    $("#luft-temp").innerHTML = (t!=null) ? `${Number(t).toFixed(1).replace('.',',')} °C` : "—";
-    if(j?.timestamp) $("#luft-kjelde").textContent = "Netatmo · " + klokkeslett(j.timestamp);
+    const t  = j?.temperatur ?? j?.temperature ?? j?.sensors?.temp_air;
+    const ts = j?.malt ?? j?.timestamp;
+    if(t!=null) $("#luft-temp").innerHTML = `${Number(t).toFixed(1).replace('.',',')} °C`;
+    const kilde = j?.kilde || "Siljan kommune";
+    $("#luft-kjelde").textContent = ts ? `${kilde} · ${klokkeslett(ts)}` : kilde;
   }catch(e){}
 }
 
