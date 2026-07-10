@@ -356,7 +356,11 @@
     }
   }
 
-  // Hent data
+  // Hent data. Behold forrige data ved enkeltfeil; vis "Tilkoblingsfeil"
+  // først etter 3 mislykkede forsøk på rad.
+  let failCount = 0;
+  const MAX_FAILS_BEFORE_ERROR = 3;
+
   async function fetchData() {
     const dot = document.getElementById('status-dot');
     const txt = document.getElementById('status-text');
@@ -367,14 +371,19 @@
       const rows = await res.json();
       if (!rows.length) throw new Error('Ingen data');
       updateUI(rows[0]);
+      failCount = 0;
       dot.className = 'status-dot';
       txt.textContent = 'Tilkoblet – data oppdateres hvert 10. minutt';
       err.style.display = 'none';
     } catch (e) {
-      dot.className = 'status-dot error';
-      txt.textContent = 'Tilkoblingsfeil';
-      err.style.display = 'block';
-      err.textContent = 'Feil: ' + e.message;
+      failCount++;
+      console.error('Supabase-feil (forsøk ' + failCount + '):', e);
+      if (failCount >= MAX_FAILS_BEFORE_ERROR) {
+        dot.className = 'status-dot error';
+        txt.textContent = 'Tilkoblingsfeil';
+        err.style.display = 'block';
+        err.textContent = 'Feil: ' + e.message;
+      }
     }
   }
 
