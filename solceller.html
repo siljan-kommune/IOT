@@ -663,6 +663,11 @@
   }
 
   // ─── HENT DATA FRA SUPABASE ──────────────────────────────
+  // Behold forrige data ved enkeltfeil. Vis "Tilkoblingsfeil" først
+  // etter 3 mislykkede forsøk på rad (≈3 min ved 60s poll).
+  let failCount = 0;
+  const MAX_FAILS_BEFORE_ERROR = 3;
+
   async function fetchData() {
     const dot     = document.getElementById('status-dot');
     const statTxt = document.getElementById('status-text');
@@ -680,16 +685,23 @@
 
       updateUI(data);
 
+      failCount = 0;
       dot.className     = 'status-dot';
       statTxt.textContent = 'Tilkoblet – data oppdateres hvert 10. minutt';
       errBnr.style.display = 'none';
 
     } catch (err) {
-      console.error('Supabase-feil:', err);
-      dot.className     = 'status-dot error';
-      statTxt.textContent = 'Tilkoblingsfeil';
-      errBnr.style.display = 'block';
-      errBnr.textContent   = 'Kunne ikke hente data: ' + (err.message || err);
+      failCount++;
+      console.error('Supabase-feil (forsøk ' + failCount + '):', err);
+
+      // Kun vis feil etter flere mislykkede forsøk på rad.
+      // Ellers: behold forrige data på skjermen urørt.
+      if (failCount >= MAX_FAILS_BEFORE_ERROR) {
+        dot.className     = 'status-dot error';
+        statTxt.textContent = 'Tilkoblingsfeil';
+        errBnr.style.display = 'block';
+        errBnr.textContent   = 'Kunne ikke hente data: ' + (err.message || err);
+      }
     }
   }
 
