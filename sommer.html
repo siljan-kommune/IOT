@@ -230,9 +230,9 @@
    ==================================================================== */
 const CONFIG = {
   steder: [
-    { navn:"Øverbøtjønna", stad:"Siljan", kilde:"Siljan kommune", badevannKey:"overbotjonn",
+    { navn:"Øverbøtjønna", stad:"Siljan", kilde:"Siljan kommune", kildeUrl:"https://www.siljan.kommune.no", badevannKey:"overbotjonn",
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/badetemperatur" },
-    { navn:"Gorningen",    stad:"Gorningen badeplass", kilde:"Siljan kommune",
+    { navn:"Gorningen",    stad:"Gorningen badeplass", kilde:"Siljan kommune", kildeUrl:"https://www.siljan.kommune.no",
       algeLenke:{ tekst:"Algeinfo", farge:"#F2960C",
         url:"https://www.siljan.kommune.no/aktuelt/algeoppblomstring-i-gorningen/" },
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-gorningen" },
@@ -300,7 +300,7 @@ function byggBadeKort(){
           : s.algeLenke
           ? `<div class="bade-vannkval"><div class="bv-status"><span class="bv-prikk" style="background:${s.algeLenke.farge}"></span><a class="bv-lenke" href="${s.algeLenke.url}" target="_blank" rel="noopener">${s.algeLenke.tekst}</a></div></div>`
           : `<div class="bade-vannkval" aria-hidden="true" style="visibility:hidden"><div class="bv-status"><span class="bv-prikk"></span>Badevannskvalitet: God</div></div>`}
-        <div class="bade-kilde">Kilde: ${s.kilde}</div>
+        <div class="bade-kilde">Kilde: ${s.kildeUrl ? `<a href="${s.kildeUrl}" target="_blank" rel="noopener">${s.kilde}</a>` : s.kilde}</div>
         ${s.badevannKey
           ? `<div class="bade-kilde" id="badevann-kilde-${i}"></div>`
           : `<div class="bade-kilde" aria-hidden="true" style="visibility:hidden">Kilde badevann: —</div>`}
