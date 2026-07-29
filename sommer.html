@@ -236,7 +236,7 @@ const CONFIG = {
       algeLenke:{ tekst:"Algeinfo", farge:"#F2960C",
         url:"https://www.siljan.kommune.no/aktuelt/algeoppblomstring-i-gorningen/" },
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-gorningen" },
-    { navn:"Heivannet",    stad:"Heivannet", kilde:"yr.no", badevannKey:"heivannet",
+    { navn:"Heivannet",    stad:"Heivannet", kilde:"yr.no", badevannKey:"heivannet", sjekkAlder:true,
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-heivannet" },
   ],
   // Lufttemp: Netatmo pusha frå Home Assistant → Supabase → api-netatmo:
@@ -245,6 +245,8 @@ const CONFIG = {
   badevannApi: "https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-badevann",
   // Pollen via proxy-funksjon (NAAF-data, server-side henta frå Yr):
   pollenApi: "https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-pollen",
+  // Skjul badetemp om siste måling er eldre enn så mange dagar (viser "Ikke oppdatert"):
+  maksAlderDagar: 3,
   // Koordinatar Siljan sentrum (UV + sol opp/ned frå api.met.no):
   lat: 59.30, lon: 9.78,
   oppdaterMs: 5*60*1000   // 5 min
@@ -337,6 +339,16 @@ async function hentBade(){
       }
       const f = tempFarge(t);
       if(t==null){ tempEl.innerHTML = `<span class="venter">Ingen data</span>`; continue; }
+      // skjul tal om målinga er for gammel (kun for stader med sjekkAlder, t.d. Heivannet/Yr)
+      const alderDagar = ts ? (Date.now() - new Date(ts).getTime()) / 86400000 : Infinity;
+      if(s.sjekkAlder && alderDagar > CONFIG.maksAlderDagar){
+        tempEl.innerHTML = `<span class="venter">Ikke oppdatert</span>`;
+        if(underEl) underEl.textContent = "";
+        merkeEl.textContent = "Utdatert";
+        merkeEl.style.background = "#cfcfcf";
+        oppdEl.textContent = ts ? "Sist målt " + tidsstempel(ts) : "";
+        continue;
+      }
       tempEl.innerHTML = `${Number(t).toFixed(1).replace('.',',')}<span class="grad">°C</span>`;
       merkeEl.textContent = f.txt;
       merkeEl.style.background = f.bg;
