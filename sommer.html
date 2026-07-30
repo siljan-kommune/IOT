@@ -503,21 +503,14 @@ hentBade(); hentBadevann(); hentLuft(); hentVaer();
 setInterval(() => { hentBade(); hentBadevann(); hentLuft(); hentVaer(); }, CONFIG.oppdaterMs);
 
 /* ---------- Intern besøksteller (KUN interne skjermer) ----------
-   Slå på med ?intern=1 i URL-en (f.eks. infoskjermens faste kiosk-URL).
-   Trigger DIREKTE på URL-parameteren – ikke avhengig av localStorage (som kan
-   være avslått på kiosk-nettlesere). localStorage brukes bare som ekstra "husk".
-   Slå av: ?intern=0. Publikum har aldri flagget → ser aldri tallet. */
+   Vises KUN når ?intern=1 står i URL-en akkurat nå (ingen localStorage-hukommelse).
+   → Vanlig URL viser ALDRI telleren, på noen enhet.
+   → Infoskjermens faste kiosk-URL må inneholde ?intern=1. */
 (function(){
+  // rydd bort evt. gammelt flagg fra tidligere versjon
+  try { localStorage.removeItem("iotIntern"); } catch(e){}
   const p = new URLSearchParams(location.search);
-  let vis = p.get("intern") === "1";
-  try {
-    if(p.has("intern")){
-      if(p.get("intern") === "0") localStorage.removeItem("iotIntern");
-      else localStorage.setItem("iotIntern","1");
-    }
-    if(localStorage.getItem("iotIntern") === "1") vis = true;
-  } catch(e){ /* localStorage kan være av på kiosk – URL-param holder */ }
-  if(!vis) return;
+  if(p.get("intern") !== "1") return;
   const el = $("#intern-teller");
   el.textContent = " · 👁 …";
   fetch("https://siljan-kommune.goatcounter.com/counter/TOTAL.json", {cache:"no-store"})
