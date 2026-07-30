@@ -503,20 +503,27 @@ hentBade(); hentBadevann(); hentLuft(); hentVaer();
 setInterval(() => { hentBade(); hentBadevann(); hentLuft(); hentVaer(); }, CONFIG.oppdaterMs);
 
 /* ---------- Intern besøksteller (KUN interne skjermer) ----------
-   Slå på for en skjerm/PC: åpne siden med ?intern=1 (huskes i localStorage).
-   Slå av igjen: ?intern=0. Publikum setter aldri flagget → ser aldri tallet. */
+   Slå på med ?intern=1 i URL-en (f.eks. infoskjermens faste kiosk-URL).
+   Trigger DIREKTE på URL-parameteren – ikke avhengig av localStorage (som kan
+   være avslått på kiosk-nettlesere). localStorage brukes bare som ekstra "husk".
+   Slå av: ?intern=0. Publikum har aldri flagget → ser aldri tallet. */
 (function(){
   const p = new URLSearchParams(location.search);
-  if(p.has("intern")){
-    if(p.get("intern") === "0") localStorage.removeItem("iotIntern");
-    else localStorage.setItem("iotIntern","1");
-  }
-  if(localStorage.getItem("iotIntern") !== "1") return;
+  let vis = p.get("intern") === "1";
+  try {
+    if(p.has("intern")){
+      if(p.get("intern") === "0") localStorage.removeItem("iotIntern");
+      else localStorage.setItem("iotIntern","1");
+    }
+    if(localStorage.getItem("iotIntern") === "1") vis = true;
+  } catch(e){ /* localStorage kan være av på kiosk – URL-param holder */ }
+  if(!vis) return;
   const el = $("#intern-teller");
+  el.textContent = " · 👁 …";
   fetch("https://siljan-kommune.goatcounter.com/counter/TOTAL.json", {cache:"no-store"})
     .then(r => r.ok ? r.json() : Promise.reject(r.status))
     .then(d => { el.textContent = " · 👁 " + String(d.count).replace(/,/g," ") + " besøk"; })
-    .catch(() => {}); // stille feil (t.d. før teljar-innstillinga er på)
+    .catch(() => { el.textContent = " · 👁 teller utilgjengelig"; });
 })();
 </script>
 
