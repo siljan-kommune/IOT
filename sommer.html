@@ -219,7 +219,7 @@
   </section>
 
   <footer>
-    <span class="bie">🐝</span> Siljan kommune · Sommer 2026 · data oppdateres automatisk
+    <span class="bie">🐝</span> Siljan kommune · Sommer 2026 · data oppdateres automatisk<span id="intern-teller"></span>
   </footer>
 
 </div>
@@ -501,6 +501,23 @@ byggBadeKort();
 tikk(); setInterval(tikk, 30000);
 hentBade(); hentBadevann(); hentLuft(); hentVaer();
 setInterval(() => { hentBade(); hentBadevann(); hentLuft(); hentVaer(); }, CONFIG.oppdaterMs);
+
+/* ---------- Intern besøksteller (KUN interne skjermer) ----------
+   Slå på for en skjerm/PC: åpne siden med ?intern=1 (huskes i localStorage).
+   Slå av igjen: ?intern=0. Publikum setter aldri flagget → ser aldri tallet. */
+(function(){
+  const p = new URLSearchParams(location.search);
+  if(p.has("intern")){
+    if(p.get("intern") === "0") localStorage.removeItem("iotIntern");
+    else localStorage.setItem("iotIntern","1");
+  }
+  if(localStorage.getItem("iotIntern") !== "1") return;
+  const el = $("#intern-teller");
+  fetch("https://siljan-kommune.goatcounter.com/counter/TOTAL.json", {cache:"no-store"})
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(d => { el.textContent = " · 👁 " + String(d.count).replace(/,/g," ") + " besøk"; })
+    .catch(() => {}); // stille feil (t.d. før teljar-innstillinga er på)
+})();
 </script>
 
 <!-- GoatCounter – personvernvenleg besøksteljing (ingen cookies) -->
