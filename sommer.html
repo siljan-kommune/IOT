@@ -503,14 +503,15 @@ hentBade(); hentBadevann(); hentLuft(); hentVaer();
 setInterval(() => { hentBade(); hentBadevann(); hentLuft(); hentVaer(); }, CONFIG.oppdaterMs);
 
 /* ---------- Intern besøksteller (KUN interne skjermer) ----------
-   Vises KUN når ?intern=1 står i URL-en akkurat nå (ingen localStorage-hukommelse).
-   → Vanlig URL viser ALDRI telleren, på noen enhet.
-   → Infoskjermens faste kiosk-URL må inneholde ?intern=1. */
+   Vises KUN når "intern=1" finnes i URL-en akkurat nå. Sjekker HELE (dekodede)
+   URL-en, ikke bare location.search — fordi infoskjermen laster siden i en
+   proxy-iframe (localhost:3000/api/proxy?url=…sommer.html?intern=1), der intern=1
+   ligger inni url-parameteren. → Vanlig offentlig URL viser ALDRI telleren. */
 (function(){
-  // rydd bort evt. gammelt flagg fra tidligere versjon
-  try { localStorage.removeItem("iotIntern"); } catch(e){}
-  const p = new URLSearchParams(location.search);
-  if(p.get("intern") !== "1") return;
+  try { localStorage.removeItem("iotIntern"); } catch(e){} // rydd gammelt flagg
+  let href = location.href;
+  try { href = decodeURIComponent(location.href); } catch(e){}
+  if(!/[?&]intern=1(?:[&#]|$)/.test(href)) return;
   const el = $("#intern-teller");
   el.textContent = " · 👁 …";
   fetch("https://siljan-kommune.goatcounter.com/counter/TOTAL.json", {cache:"no-store"})
