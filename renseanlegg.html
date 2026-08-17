@@ -274,10 +274,41 @@
   const PEAK_KWP      = 48.59; // Installert toppeffekt (kWp)
   const KR_PER_KWH    = 1.75;  // Flat takst inkl. nettleie
   const CO2_KG_PER_KWH = 0.0119; // NVE klimadeklarasjon 2024
-  const POLL_MS       = 10 * 60 * 1000;
+  const POLL_MS = 10 * 60 * 1000; // 10 minutter på dagtid
+  const NIGHT_POLL_MS = 60 * 60 * 1000; // 1 time mellom 22:00 og 06:00
+  const MAX_BACKOFF_MS = 60 * 60 * 1000;
+  const REQUEST_TIMEOUT_MS = 30 * 1000;
+  const PAGE_RELOAD_MS = 6 * 60 * 60 * 1000;
+  const PAGE_VERSION = '2026.08.17.1';
   // ═══════════════════════════════════════════════
 
-  const HEADERS = { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON };
+  // Stabil, anonym ID gjør det mulig å skille fysiske skjermer i Supabase-loggene.
+  // ?screen=navn kan brukes når en skjerm skal få et menneskelesbart navn.
+  function getScreenId() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const explicitId = params.get('screen');
+      if (explicitId) return explicitId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+
+      const key = 'siljan_iot_screen_id';
+      let id = localStorage.getItem(key);
+      if (!id) {
+        id = 'display-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+        localStorage.setItem(key, id);
+      }
+      return id;
+    } catch (_) {
+      return 'storage-unavailable';
+    }
+  }
+
+  const SCREEN_ID = getScreenId();
+  const POLL_LOCK_KEY = 'siljan_iot_last_poll_' + TABLE;
+  const HEADERS = {
+    'apikey': SUPABASE_ANON,
+    'Authorization': 'Bearer ' + SUPABASE_ANON,
+    'X-Client-Info': 'siljan-iot-display/' + PAGE_VERSION + ' screen/' + SCREEN_ID
+  };
 
   // Klokke
   function updateClock() {
@@ -346,7 +377,7 @@
     document.getElementById('stat-total-tonn').textContent = fmtCO2(total);
 
     if (d.updated_at) {
-      const diff = Math.round((Date.now() - new Date(d.updated_at).getTime()) / 10 * 60 * 1000);
+      const diff = Math.round((Date.now() - new Date(d.updated_at).getTime()) / (60 * 1000));
       const diffTxt = diff <= 1 ? 'akkurat nå' : diff + ' min siden';
       document.getElementById('footer-updated').textContent = 'Sist oppdatert: ' + diffTxt;
       if (diff > 15) {
@@ -356,39 +387,128 @@
     }
   }
 
-  // Hent data. Behold forrige data ved enkeltfeil; vis "Tilkoblingsfeil"
-  // først etter 3 mislykkede forsøk på rad.
+  // ─── KONTROLLERT HENTING FRA SUPABASE ────────────────────
+  // Bare synlige sider poller. Lokal lås hindrer duplikate sideinstanser
+  // på samme skjerm, og neste kall planlegges først når forrige er ferdig.
   let failCount = 0;
+  let requestInFlight = false;
+  let pollTimer = null;
+  let activeController = null;
   const MAX_FAILS_BEFORE_ERROR = 3;
+
+  function normalPollDelay() {
+    const hour = new Date().getHours();
+    return (hour >= 22 || hour < 6) ? NIGHT_POLL_MS : POLL_MS;
+  }
+
+  function withJitter(delay) {
+    return delay + Math.floor(Math.random() * 30000);
+  }
+
+  function claimPollSlot(minimumDelay) {
+    try {
+      const now = Date.now();
+      const lastPoll = Number(localStorage.getItem(POLL_LOCK_KEY) || 0);
+      if (now - lastPoll < minimumDelay - 5000) return false;
+      localStorage.setItem(POLL_LOCK_KEY, String(now));
+    } catch (_) {
+      // Fortsett uten lokal lås hvis lagring ikke er tilgjengelig.
+    }
+    return true;
+  }
+
+  function scheduleNext(delay) {
+    clearTimeout(pollTimer);
+    pollTimer = setTimeout(runPollingCycle, withJitter(delay));
+  }
 
   async function fetchData() {
     const dot = document.getElementById('status-dot');
     const txt = document.getElementById('status-text');
     const err = document.getElementById('error-banner');
+    let timeoutTimer = null;
+
     try {
-      const res = await fetch(SUPABASE_URL + '/rest/v1/' + TABLE + '?id=eq.1&select=*', { headers: HEADERS });
+      activeController = new AbortController();
+      timeoutTimer = setTimeout(function () {
+        activeController.abort();
+      }, REQUEST_TIMEOUT_MS);
+
+      const fields = 'id,power_now_w,energy_today_kwh,energy_month_kwh,energy_year_kwh,energy_total_kwh,updated_at';
+      const res = await fetch(
+        SUPABASE_URL + '/rest/v1/' + TABLE + '?id=eq.1&select=' + fields,
+        { headers: HEADERS, signal: activeController.signal }
+      );
+
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const rows = await res.json();
       if (!rows.length) throw new Error('Ingen data');
+
       updateUI(rows[0]);
       failCount = 0;
       dot.className = 'status-dot';
-      txt.textContent = 'Tilkoblet – data oppdateres hvert 10. minutt';
+      txt.textContent = 'Tilkoblet – data oppdateres hvert ' +
+        (normalPollDelay() === NIGHT_POLL_MS ? '60.' : '10.') + ' minutt';
       err.style.display = 'none';
+      return true;
     } catch (e) {
+      if (e && e.name === 'AbortError' && document.visibilityState === 'hidden') {
+        return null;
+      }
+
       failCount++;
       console.error('Supabase-feil (forsøk ' + failCount + '):', e);
       if (failCount >= MAX_FAILS_BEFORE_ERROR) {
         dot.className = 'status-dot error';
-        txt.textContent = 'Tilkoblingsfeil';
+        txt.textContent = 'Tilkoblingsfeil – prøver sjeldnere';
         err.style.display = 'block';
-        err.textContent = 'Feil: ' + e.message;
+        err.textContent = 'Feil: ' + (e.message || e);
       }
+      return false;
+    } finally {
+      clearTimeout(timeoutTimer);
+      activeController = null;
     }
   }
 
-  fetchData();
-  setInterval(fetchData, POLL_MS);
+  async function runPollingCycle() {
+    if (document.visibilityState === 'hidden') return;
+
+    const baseDelay = normalPollDelay();
+    if (requestInFlight || !claimPollSlot(baseDelay)) {
+      scheduleNext(baseDelay);
+      return;
+    }
+
+    requestInFlight = true;
+    const succeeded = await fetchData();
+    requestInFlight = false;
+
+    if (document.visibilityState === 'hidden') return;
+    if (succeeded === null) return;
+
+    const backoff = succeeded
+      ? baseDelay
+      : Math.min(baseDelay * Math.pow(2, Math.min(failCount, 3)), MAX_BACKOFF_MS);
+    scheduleNext(backoff);
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    clearTimeout(pollTimer);
+    if (document.visibilityState === 'hidden') {
+      if (activeController) activeController.abort();
+      return;
+    }
+    scheduleNext(1000);
+  });
+
+  // Last inn siden på nytt med jevne mellomrom, slik at fremtidige
+  // GitHub-endringer blir tatt i bruk uten manuell omstart.
+  setTimeout(function () {
+    window.location.reload();
+  }, PAGE_RELOAD_MS);
+
+  scheduleNext(1000);
 </script>
 </body>
 </html>
