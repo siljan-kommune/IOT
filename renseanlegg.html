@@ -346,7 +346,7 @@
     document.getElementById('stat-total-tonn').textContent = fmtCO2(total);
 
     if (d.updated_at) {
-      const diff = Math.round((Date.now() - new Date(d.updated_at).getTime()) / 60000);
+      const diff = Math.round((Date.now() - new Date(d.updated_at).getTime()) / 10 * 60 * 1000);
       const diffTxt = diff <= 1 ? 'akkurat nå' : diff + ' min siden';
       document.getElementById('footer-updated').textContent = 'Sist oppdatert: ' + diffTxt;
       if (diff > 15) {
