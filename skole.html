@@ -175,7 +175,7 @@
   const PEAK_KWP      = 57.19; // Installert toppeffekt (kWp)
   const KR_PER_KWH    = 1.75;
   const CO2_KG_PER_KWH = 0.0119; // NVE klimadeklarasjon 2024
-  const POLL_MS       = 60000;
+  const POLL_MS       = 10 * 60 * 1000; // 10 minutter
   const HEADERS = { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON };
 
   function updateClock() {
