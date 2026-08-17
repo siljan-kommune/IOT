@@ -520,6 +520,7 @@
   // ═══════════════════════════════════════════════════════
   const SUPABASE_URL  = 'https://fdqjiubwnohtucpercro.supabase.co';
   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkcWppdWJ3bm9odHVjcGVyY3JvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzMwOTAsImV4cCI6MjA4OTkwOTA5MH0.31n5oId96UEOB7Hf-rSCJ_DG57SNWNPJfeiCFDbW_vQ';
+  const TABLE         = 'solar_sykehjem';
 
   // Anleggsdata
   const PEAK_KWP   = 140;  // Installert toppeffekt (kWp)
@@ -532,12 +533,40 @@
   const CO2_KG_PER_KWH = 0.0119; // NVE klimadeklarasjon 2024
 
   // Oppdateringsintervall (millisekunder)
-  const POLL_INTERVAL_MS = 10 * 60 * 1000; // 10 min 
+  const POLL_INTERVAL_MS = 10 * 60 * 1000; // 10 minutter på dagtid
+  const NIGHT_POLL_MS = 60 * 60 * 1000; // 1 time mellom 22:00 og 06:00
+  const MAX_BACKOFF_MS = 60 * 60 * 1000;
+  const REQUEST_TIMEOUT_MS = 30 * 1000;
+  const PAGE_RELOAD_MS = 6 * 60 * 60 * 1000;
+  const PAGE_VERSION = '2026.08.17.1';
   // ═══════════════════════════════════════════════════════
 
+  // Stabil, anonym ID gjør det mulig å skille fysiske skjermer i Supabase-loggene.
+  // ?screen=navn kan brukes når en skjerm skal få et menneskelesbart navn.
+  function getScreenId() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const explicitId = params.get('screen');
+      if (explicitId) return explicitId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+
+      const key = 'siljan_iot_screen_id';
+      let id = localStorage.getItem(key);
+      if (!id) {
+        id = 'display-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+        localStorage.setItem(key, id);
+      }
+      return id;
+    } catch (_) {
+      return 'storage-unavailable';
+    }
+  }
+
+  const SCREEN_ID = getScreenId();
+  const POLL_LOCK_KEY = 'siljan_iot_last_poll_' + TABLE;
   const SUPABASE_HEADERS = {
     'apikey': SUPABASE_ANON,
-    'Authorization': 'Bearer ' + SUPABASE_ANON
+    'Authorization': 'Bearer ' + SUPABASE_ANON,
+    'X-Client-Info': 'siljan-iot-display/' + PAGE_VERSION + ' screen/' + SCREEN_ID
   };
 
   // ─── KLOKKE ──────────────────────────────────────────────
@@ -662,52 +691,128 @@
     }
   }
 
-  // ─── HENT DATA FRA SUPABASE ──────────────────────────────
-  // Behold forrige data ved enkeltfeil. Vis "Tilkoblingsfeil" først
-  // etter 3 mislykkede forsøk på rad (≈3 min ved 60s poll).
+  // ─── KONTROLLERT HENTING FRA SUPABASE ────────────────────
+  // Bare synlige sider poller. Lokal lås hindrer duplikate sideinstanser
+  // på samme skjerm, og neste kall planlegges først når forrige er ferdig.
   let failCount = 0;
+  let requestInFlight = false;
+  let pollTimer = null;
+  let activeController = null;
   const MAX_FAILS_BEFORE_ERROR = 3;
 
+  function normalPollDelay() {
+    const hour = new Date().getHours();
+    return (hour >= 22 || hour < 6) ? NIGHT_POLL_MS : POLL_INTERVAL_MS;
+  }
+
+  function withJitter(delay) {
+    return delay + Math.floor(Math.random() * 30000);
+  }
+
+  function claimPollSlot(minimumDelay) {
+    try {
+      const now = Date.now();
+      const lastPoll = Number(localStorage.getItem(POLL_LOCK_KEY) || 0);
+      if (now - lastPoll < minimumDelay - 5000) return false;
+      localStorage.setItem(POLL_LOCK_KEY, String(now));
+    } catch (_) {
+      // Fortsett uten lokal lås hvis lagring ikke er tilgjengelig.
+    }
+    return true;
+  }
+
+  function scheduleNext(delay) {
+    clearTimeout(pollTimer);
+    pollTimer = setTimeout(runPollingCycle, withJitter(delay));
+  }
+
   async function fetchData() {
-    const dot     = document.getElementById('status-dot');
-    const statTxt = document.getElementById('status-text');
-    const errBnr  = document.getElementById('error-banner');
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-text');
+    const err = document.getElementById('error-banner');
+    let timeoutTimer = null;
 
     try {
+      activeController = new AbortController();
+      timeoutTimer = setTimeout(function () {
+        activeController.abort();
+      }, REQUEST_TIMEOUT_MS);
+
+      const fields = 'id,power_now_w,energy_today_kwh,energy_month_kwh,energy_year_kwh,energy_total_kwh,updated_at';
       const res = await fetch(
-        SUPABASE_URL + '/rest/v1/solar_sykehjem?id=eq.1&select=*',
-        { headers: SUPABASE_HEADERS }
+        SUPABASE_URL + '/rest/v1/' + TABLE + '?id=eq.1&select=' + fields,
+        { headers: SUPABASE_HEADERS, signal: activeController.signal }
       );
+
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const rows = await res.json();
-      if (!rows.length) throw new Error('Ingen data i tabellen');
-      const data = rows[0];
+      if (!rows.length) throw new Error('Ingen data');
 
-      updateUI(data);
-
+      updateUI(rows[0]);
       failCount = 0;
-      dot.className     = 'status-dot';
-      statTxt.textContent = 'Tilkoblet – data oppdateres hvert 10. minutt';
-      errBnr.style.display = 'none';
-
-    } catch (err) {
-      failCount++;
-      console.error('Supabase-feil (forsøk ' + failCount + '):', err);
-
-      // Kun vis feil etter flere mislykkede forsøk på rad.
-      // Ellers: behold forrige data på skjermen urørt.
-      if (failCount >= MAX_FAILS_BEFORE_ERROR) {
-        dot.className     = 'status-dot error';
-        statTxt.textContent = 'Tilkoblingsfeil';
-        errBnr.style.display = 'block';
-        errBnr.textContent   = 'Kunne ikke hente data: ' + (err.message || err);
+      dot.className = 'status-dot';
+      txt.textContent = 'Tilkoblet – data oppdateres hvert ' +
+        (normalPollDelay() === NIGHT_POLL_MS ? '60.' : '10.') + ' minutt';
+      err.style.display = 'none';
+      return true;
+    } catch (e) {
+      if (e && e.name === 'AbortError' && document.visibilityState === 'hidden') {
+        return null;
       }
+
+      failCount++;
+      console.error('Supabase-feil (forsøk ' + failCount + '):', e);
+      if (failCount >= MAX_FAILS_BEFORE_ERROR) {
+        dot.className = 'status-dot error';
+        txt.textContent = 'Tilkoblingsfeil – prøver sjeldnere';
+        err.style.display = 'block';
+        err.textContent = 'Feil: ' + (e.message || e);
+      }
+      return false;
+    } finally {
+      clearTimeout(timeoutTimer);
+      activeController = null;
     }
   }
 
-  // ─── START ───────────────────────────────────────────────
-  fetchData();
-  setInterval(fetchData, POLL_INTERVAL_MS);
+  async function runPollingCycle() {
+    if (document.visibilityState === 'hidden') return;
+
+    const baseDelay = normalPollDelay();
+    if (requestInFlight || !claimPollSlot(baseDelay)) {
+      scheduleNext(baseDelay);
+      return;
+    }
+
+    requestInFlight = true;
+    const succeeded = await fetchData();
+    requestInFlight = false;
+
+    if (document.visibilityState === 'hidden') return;
+    if (succeeded === null) return;
+
+    const backoff = succeeded
+      ? baseDelay
+      : Math.min(baseDelay * Math.pow(2, Math.min(failCount, 3)), MAX_BACKOFF_MS);
+    scheduleNext(backoff);
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    clearTimeout(pollTimer);
+    if (document.visibilityState === 'hidden') {
+      if (activeController) activeController.abort();
+      return;
+    }
+    scheduleNext(1000);
+  });
+
+  // Last inn siden på nytt med jevne mellomrom, slik at fremtidige
+  // GitHub-endringer blir tatt i bruk uten manuell omstart.
+  setTimeout(function () {
+    window.location.reload();
+  }, PAGE_RELOAD_MS);
+
+  scheduleNext(1000);
 </script>
 
 </body>
