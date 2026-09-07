@@ -220,7 +220,11 @@
   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkcWppdWJ3bm9odHVjcGVyY3JvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzMwOTAsImV4cCI6MjA4OTkwOTA5MH0.31n5oId96UEOB7Hf-rSCJ_DG57SNWNPJfeiCFDbW_vQ';
   const KR_PER_KWH     = 1.75;
   const CO2_KG_PER_KWH = 0.0119; // NVE klimadeklarasjon 2024
-  const POLL_MS        = 60000;
+  // v1.1 (2026-09-07): POLL_MS 60000 -> 600000. Fire REST-kall kvart minutt gav
+  // 240 kall/time per skjerm og bidrog til at Supabase-prosjektet brukte opp
+  // disk-IO-budsjettet (nedetid 17.08 og 07.09). Statusteksten under sa allereie
+  // "hvert 10. minutt" - no stemmer koden med teksten.
+  const POLL_MS        = 600000;
   const HEADERS = { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON };
 
   const TABLES = [
