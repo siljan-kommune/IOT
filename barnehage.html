@@ -180,7 +180,7 @@
   const MAX_BACKOFF_MS = 60 * 60 * 1000;
   const REQUEST_TIMEOUT_MS = 30 * 1000;
   const PAGE_RELOAD_MS = 6 * 60 * 60 * 1000;
-  const PAGE_VERSION = '2026.08.17.1';
+  const PAGE_VERSION = '2026.09.08.1';
   // Stabil, anonym ID gjør det mulig å skille fysiske skjermer i Supabase-loggene.
   // ?screen=navn kan brukes når en skjerm skal få et menneskelesbart navn.
   function getScreenId() {
@@ -260,6 +260,7 @@
   // på samme skjerm, og neste kall planlegges først når forrige er ferdig.
   let failCount = 0;
   let requestInFlight = false;
+  let firstCycle = true;
   let pollTimer = null;
   let activeController = null;
   const MAX_FAILS_BEFORE_ERROR = 3;
@@ -273,11 +274,11 @@
     return delay + Math.floor(Math.random() * 30000);
   }
 
-  function claimPollSlot(minimumDelay) {
+  function claimPollSlot(minimumDelay, force) {
     try {
       const now = Date.now();
       const lastPoll = Number(localStorage.getItem(POLL_LOCK_KEY) || 0);
-      if (now - lastPoll < minimumDelay - 5000) return false;
+      if (!force && now - lastPoll < minimumDelay - 5000) return false;
       localStorage.setItem(POLL_LOCK_KEY, String(now));
     } catch (_) {
       // Fortsett uten lokal lås hvis lagring ikke er tilgjengelig.
@@ -285,9 +286,11 @@
     return true;
   }
 
-  function scheduleNext(delay) {
+  // immediate=true dropper jitteren. Brukes ved oppstart og når siden blir
+  // synlig igjen - der er ventetiden synlig for den som ser på skjermen.
+  function scheduleNext(delay, immediate) {
     clearTimeout(pollTimer);
-    pollTimer = setTimeout(runPollingCycle, withJitter(delay));
+    pollTimer = setTimeout(runPollingCycle, immediate ? delay : withJitter(delay));
   }
 
   async function fetchData() {
@@ -340,20 +343,31 @@
   }
 
   async function runPollingCycle() {
-    if (document.visibilityState === 'hidden') return;
-
     const baseDelay = normalPollDelay();
-    if (requestInFlight || !claimPollSlot(baseDelay)) {
+
+    // Når siden er skjult dropper vi selve hentingen, men holder løkka i gang.
+    // Å stole på visibilitychange alene er risikabelt: fyrer det aldri
+    // (TV-nettlesere, skjermsparer), stopper oppdateringen for godt.
+    if (document.visibilityState === 'hidden') { scheduleNext(baseDelay); return; }
+
+    // Første syklus etter (re)last må alltid hente. Siden har ingen data å vise,
+    // og claimPollSlot-låsen ligger i localStorage og overlever en reload - uten
+    // dette står skjermen tom i opptil 10 minutter (én time om natten) etter
+    // hver PAGE_RELOAD_MS.
+    if (requestInFlight || !claimPollSlot(baseDelay, firstCycle)) {
       scheduleNext(baseDelay);
       return;
     }
+    firstCycle = false;
 
     requestInFlight = true;
     const succeeded = await fetchData();
     requestInFlight = false;
 
-    if (document.visibilityState === 'hidden') return;
-    if (succeeded === null) return;
+    // succeeded === null betyr at hentingen ble avbrutt fordi siden ble skjult.
+    // Planlegg likevel neste syklus, ellers er vi tilbake til å være avhengig av
+    // at visibilitychange fyrer.
+    if (succeeded === null) { scheduleNext(baseDelay); return; }
 
     const backoff = succeeded
       ? baseDelay
@@ -362,12 +376,11 @@
   }
 
   document.addEventListener('visibilitychange', function () {
-    clearTimeout(pollTimer);
     if (document.visibilityState === 'hidden') {
       if (activeController) activeController.abort();
-      return;
+      return;   // løkka planlegges videre av runPollingCycle, ikke drept her
     }
-    scheduleNext(1000);
+    scheduleNext(1000, true);
   });
 
   // Last inn siden på nytt med jevne mellomrom, slik at fremtidige
@@ -376,7 +389,8 @@
     window.location.reload();
   }, PAGE_RELOAD_MS);
 
-  scheduleNext(1000);
+  // Første henting uten jitter, ellers står skjermen tom i opptil 30 sekunder.
+  scheduleNext(0, true);
 </script>
 </body>
 </html>
