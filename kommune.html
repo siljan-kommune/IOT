@@ -349,9 +349,11 @@
     return delay + Math.floor(Math.random() * 30000);
   }
 
-  function scheduleNext(delay) {
+  // immediate=true droppar jitteren. Brukast ved oppstart og når sida blir synleg
+  // igjen — der er ventetida synleg for den som ser på skjermen.
+  function scheduleNext(delay, immediate) {
     clearTimeout(pollTimer);
-    pollTimer = setTimeout(runPollingCycle, withJitter(delay));
+    pollTimer = setTimeout(runPollingCycle, immediate ? delay : withJitter(delay));
   }
 
   async function fetchData() {
@@ -388,15 +390,17 @@
 
   // ── Planlegging ───────────────────────────────────────────────
   async function runPollingCycle() {
-    if (document.visibilityState === 'hidden') return;   // ikkje poll medan sida er skjult
     const baseDelay = normalPollDelay();
+
+    // Når sida er skjult droppar vi sjølve hentinga, men held loopen i gang.
+    // Å stole på visibilitychange aleine er risikabelt: fyrer ikkje det eventet
+    // (TV-nettlesarar, skjermsparar), stoppar oppdateringa for godt.
+    if (document.visibilityState === 'hidden') { scheduleNext(baseDelay); return; }
     if (requestInFlight) { scheduleNext(baseDelay); return; }
 
     requestInFlight = true;
     const succeeded = await fetchData();
     requestInFlight = false;
-
-    if (document.visibilityState === 'hidden') return;
 
     // Backoff ved gjentekne feil, so eit nede Supabase ikkje blir hamra på.
     const delay = succeeded
@@ -406,16 +410,17 @@
   }
 
   document.addEventListener('visibilitychange', function () {
-    clearTimeout(pollTimer);
-    if (document.visibilityState === 'hidden') return;
-    scheduleNext(1000);
+    if (document.visibilityState === 'visible') scheduleNext(1000, true);
   });
 
   // Hent ny versjon av sida med jamne mellomrom, slik at framtidige
   // GitHub-endringar blir tatt i bruk utan manuell omstart av skjermen.
   setTimeout(function () { window.location.reload(); }, PAGE_RELOAD_MS);
 
-  scheduleNext(1000);
+  // Fyrste henting utan jitter. På infoskjermen har kommune.html berre ~30 s
+  // synleg tid per rotasjon, so 1 s + opptil 30 s jitter ville brukt opp heile
+  // vindauget på "HENTER DATA…".
+  scheduleNext(0, true);
 </script>
 </body>
 </html>
