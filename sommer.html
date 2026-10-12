@@ -117,6 +117,7 @@
   .bade-vannkval{margin-top:8px}
   .bade-vannkval .bv-status{display:flex;align-items:center;gap:7px;font-size:clamp(.72rem,.95vw,.9rem);color:var(--blekk);font-weight:600}
   .bade-vannkval .bv-prikk{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+  .bade-besok{font-size:clamp(.78rem,1vw,.95rem);font-weight:800;color:var(--himmel);margin-top:8px}
   .bade-kilde{font-size:clamp(.6rem,.78vw,.74rem);color:var(--blekk-mjuk);opacity:.75;margin-top:6px}
   .bade-kilde a{color:var(--himmel);text-decoration:underline;text-underline-offset:2px}
   .bade-kilde a:hover{color:var(--korall)}
@@ -251,8 +252,16 @@ const CONFIG = {
   maksAlderDagar: 3,
   // Koordinatar Siljan sentrum (UV + sol opp/ned frå api.met.no):
   lat: 59.30, lon: 9.78,
-  oppdaterMs: 5*60*1000   // 5 min
+  oppdaterMs: 5*60*1000,  // 5 min
+  // Besøkstall (GoatCounter) vist i vinter-kortene; fallback hvis utilgjengelig:
+  besokApi: "https://siljan-kommune.goatcounter.com/counter/TOTAL.json",
+  besokFallback: "1 546"
 };
+
+/* VINTER = sesongen er over. Avledet av at minst ett sted har vinter:true.
+   → skjuler badevannskvalitet på ALLE kort og viser besøkstall i vinter-kortene.
+   Til sommeren 2027: fjern vinter:true fra stedene, så blir alt som før. */
+const VINTER = CONFIG.steder.some(s => s.vinter);
 
 /* ---------- Hjelpefunksjoner ---------- */
 const $ = s => document.querySelector(s);
@@ -287,6 +296,23 @@ function byggBadeKort(){
   CONFIG.steder.forEach((s,i)=>{
     const el = document.createElement("div");
     el.className = "bade-kort";
+    const kildeLinje = `<div class="bade-kilde">Kilde: ${s.kildeUrl ? `<a href="${s.kildeUrl}" target="_blank" rel="noopener">${s.kilde}</a>` : s.kilde}</div>`;
+    let bunnLinjer;
+    if(VINTER){
+      // vinter: INGEN badevannskvalitet. Vinter-kort får besøkstall; øvrige usynlig spacer for lik høyde.
+      const besok = s.vinter
+        ? `<div class="bade-besok" id="besok-${i}">👁 ${CONFIG.besokFallback} besøk i 2026</div>`
+        : `<div class="bade-besok" aria-hidden="true" style="visibility:hidden">👁 0 besøk i 2026</div>`;
+      bunnLinjer = besok + kildeLinje;
+    } else {
+      const badevannStatus = s.badevannKey
+        ? `<div class="bade-vannkval" id="badevann-${i}"></div>`
+        : `<div class="bade-vannkval" aria-hidden="true" style="visibility:hidden"><div class="bv-status"><span class="bv-prikk"></span>Badevannskvalitet: God</div></div>`;
+      const badevannKilde = s.badevannKey
+        ? `<div class="bade-kilde" id="badevann-kilde-${i}"></div>`
+        : `<div class="bade-kilde" aria-hidden="true" style="visibility:hidden">Kilde badevann: —</div>`;
+      bunnLinjer = badevannStatus + kildeLinje + badevannKilde;
+    }
     el.innerHTML = `
       <div>
         <div class="bade-namn">${s.navn}</div>
@@ -299,13 +325,7 @@ function byggBadeKort(){
           <span class="bade-merkelapp" id="merke-${i}" style="background:#cfcfcf">—</span>
           <span class="bade-oppd" id="oppd-${i}"></span>
         </div>
-        ${s.badevannKey
-          ? `<div class="bade-vannkval" id="badevann-${i}"></div>`
-          : `<div class="bade-vannkval" aria-hidden="true" style="visibility:hidden"><div class="bv-status"><span class="bv-prikk"></span>Badevannskvalitet: God</div></div>`}
-        <div class="bade-kilde">Kilde: ${s.kildeUrl ? `<a href="${s.kildeUrl}" target="_blank" rel="noopener">${s.kilde}</a>` : s.kilde}</div>
-        ${s.badevannKey
-          ? `<div class="bade-kilde" id="badevann-kilde-${i}"></div>`
-          : `<div class="bade-kilde" aria-hidden="true" style="visibility:hidden">Kilde badevann: —</div>`}
+        ${bunnLinjer}
       </div>
       <div class="bolge"></div>`;
     grid.appendChild(el);
@@ -505,11 +525,29 @@ function tikk(){
   $("#dato").textContent=n.toLocaleDateString("no",{weekday:"long",day:"numeric",month:"long"});
 }
 
+/* ---------- Besøkstall til vinter-kortene ---------- */
+function hentBesok(){
+  const mal = CONFIG.steder.map((s,i)=> s.vinter ? i : -1).filter(i=> i>=0);
+  if(!mal.length) return;
+  fetch(CONFIG.besokApi, {cache:"no-store"})
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(d => {
+      const n = String(d.count).replace(/,/g," ");
+      mal.forEach(i => { const el = $("#besok-"+i); if(el) el.textContent = `👁 ${n} besøk i 2026`; });
+    })
+    .catch(() => {}); // behold fallback-tallet fra HTML
+}
+
 /* ---------- Oppstart ---------- */
 byggBadeKort();
 tikk(); setInterval(tikk, 30000);
-hentBade(); hentBadevann(); hentLuft(); hentVaer();
-setInterval(() => { hentBade(); hentBadevann(); hentLuft(); hentVaer(); }, CONFIG.oppdaterMs);
+if(VINTER){
+  hentBade(); hentLuft(); hentVaer(); hentBesok();   // ingen badevann om vinteren
+  setInterval(() => { hentBade(); hentLuft(); hentVaer(); hentBesok(); }, CONFIG.oppdaterMs);
+} else {
+  hentBade(); hentBadevann(); hentLuft(); hentVaer();
+  setInterval(() => { hentBade(); hentBadevann(); hentLuft(); hentVaer(); }, CONFIG.oppdaterMs);
+}
 
 /* ---------- Intern besøksteller (KUN interne skjermer) ----------
    Vises KUN når "intern=1" finnes i URL-en akkurat nå. Sjekker HELE (dekodede)
