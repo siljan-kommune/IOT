@@ -147,22 +147,10 @@
   .sol-rad{display:flex;justify-content:space-between;gap:8px;font-size:clamp(.85rem,1.1vw,1.05rem);font-weight:700}
   .sol-rad .lab{display:block;font-size:.7rem;color:var(--blekk-mjuk);font-weight:600;text-transform:uppercase}
 
-  /* ---------- Vinter-modus ---------- */
-  #vinter-hero{flex:1;display:flex;align-items:center;justify-content:center}
-  .vinter-kort{
-    background:#fff;border-radius:28px;box-shadow:var(--kort-skugge);
-    border-top:8px solid var(--himmel);
-    padding:clamp(34px,5vw,70px) clamp(28px,5vw,80px);
-    text-align:center;max-width:900px;
-  }
-  .vinter-ikon{font-size:clamp(3.4rem,8vw,6rem);line-height:1;margin-bottom:clamp(14px,2vw,24px)}
-  .vinter-tittel{font-size:clamp(1.5rem,3.6vw,3rem);font-weight:800;line-height:1.15;color:var(--blekk)}
-  .vinter-under{font-size:clamp(1.1rem,2.4vw,2rem);font-weight:600;color:var(--blekk-mjuk);margin-top:clamp(10px,1.5vw,18px)}
-  .vinter-stat{
-    display:inline-block;margin-top:clamp(22px,3vw,38px);
-    background:var(--himmel);color:#fff;font-weight:800;
-    font-size:clamp(1rem,2vw,1.5rem);padding:clamp(10px,1.4vw,16px) clamp(20px,2.6vw,34px);
-    border-radius:999px;
+  /* ---------- Vinterpause i et badekort ---------- */
+  .bade-temp .vinter-melding{
+    font-size:clamp(1.15rem,2.3vw,1.9rem);font-weight:800;line-height:1.15;
+    letter-spacing:normal;color:var(--himmel);
   }
 
   footer{
@@ -201,21 +189,12 @@
     </div>
   </header>
 
-  <section id="vinter-hero" hidden>
-    <div class="vinter-kort">
-      <div class="vinter-ikon">❄️</div>
-      <div class="vinter-tittel">Temperaturmålere tatt inn for vinteren.</div>
-      <div class="vinter-under">Kommer tilbake i 2027.</div>
-      <div class="vinter-stat"><span id="vinter-besok">1546</span> besøk i 2026</div>
-    </div>
-  </section>
-
-  <section id="seksjon-bade">
+  <section>
     <div class="seksjon-tittel">🌊 Badetemperaturer</div>
     <div class="bade-grid" id="bade-grid"><!-- kort genereres --></div>
   </section>
 
-  <section id="seksjon-vaer">
+  <section>
     <div class="seksjon-tittel">☀️ Vær i Siljan i dag</div>
     <div class="nede-grid">
       <div class="info-kort luft">
@@ -255,9 +234,9 @@
    ==================================================================== */
 const CONFIG = {
   steder: [
-    { navn:"Øverbøtjønna", stad:"Siljan", kilde:"Siljan kommune", kildeUrl:"https://www.siljan.kommune.no", badevannKey:"overbotjonn",
+    { navn:"Øverbøtjønna", stad:"Siljan", kilde:"Siljan kommune", kildeUrl:"https://www.siljan.kommune.no", badevannKey:"overbotjonn", vinter:true,
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/badetemperatur" },
-    { navn:"Gorningen",    stad:"Gorningen badeplass", kilde:"Siljan kommune", kildeUrl:"https://www.siljan.kommune.no",
+    { navn:"Gorningen",    stad:"Gorningen badeplass", kilde:"Siljan kommune", kildeUrl:"https://www.siljan.kommune.no", vinter:true,
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-gorningen" },
     { navn:"Heivannet",    stad:"Heivannet", kilde:"yr.no", badevannKey:"heivannet", sjekkAlder:true,
       api:"https://fdqjiubwnohtucpercro.supabase.co/functions/v1/api-heivannet" },
@@ -338,6 +317,15 @@ async function hentBade(){
   for(let i=0;i<CONFIG.steder.length;i++){
     const s = CONFIG.steder[i];
     const tempEl = $("#temp-"+i), merkeEl = $("#merke-"+i), oppdEl = $("#oppd-"+i), underEl = $("#under-"+i);
+    if(s.vinter){
+      // måleren er tatt inn for vinteren – ikke hent data
+      tempEl.innerHTML = `<span class="vinter-melding">❄️ Tatt inn for vinteren</span>`;
+      if(underEl) underEl.textContent = "Kommer tilbake i 2027";
+      merkeEl.textContent = "Vinterpause";
+      merkeEl.style.background = "#5DB7E0";
+      oppdEl.textContent = "";
+      continue;
+    }
     if(!s.api){
       tempEl.innerHTML = `<span class="venter">API kommer</span>`;
       continue;
@@ -517,32 +505,11 @@ function tikk(){
   $("#dato").textContent=n.toLocaleDateString("no",{weekday:"long",day:"numeric",month:"long"});
 }
 
-/* ---------- Oppstart ----------
-   VINTERMODUS: sett til false neste sommer for å få tilbake alt live-innholdet. */
-const VINTERMODUS = true;
-
+/* ---------- Oppstart ---------- */
+byggBadeKort();
 tikk(); setInterval(tikk, 30000);
-
-if(VINTERMODUS){
-  // skjul data-seksjonene, vis vinter-hero
-  $("#seksjon-bade").hidden = true;
-  $("#seksjon-vaer").hidden = true;
-  $("#vinter-hero").hidden = false;
-  const under = document.querySelector("header .under");
-  if(under) under.textContent = "Badesesongen er over for i år";
-  document.title = "Sommer i Siljan – tilbake i 2027";
-  const foot = document.querySelector("footer");
-  if(foot) foot.innerHTML = `<span class="bie">🐝</span> Siljan kommune · Vi sees igjen sommeren 2027`;
-  // hent live besøkstall til hero (faller tilbake til 1546 hvis utilgjengelig)
-  fetch("https://siljan-kommune.goatcounter.com/counter/TOTAL.json", {cache:"no-store"})
-    .then(r => r.ok ? r.json() : Promise.reject(r.status))
-    .then(d => { $("#vinter-besok").textContent = String(d.count).replace(/,/g," "); })
-    .catch(() => {}); // behold 1546 fra HTML
-} else {
-  byggBadeKort();
-  hentBade(); hentBadevann(); hentLuft(); hentVaer();
-  setInterval(() => { hentBade(); hentBadevann(); hentLuft(); hentVaer(); }, CONFIG.oppdaterMs);
-}
+hentBade(); hentBadevann(); hentLuft(); hentVaer();
+setInterval(() => { hentBade(); hentBadevann(); hentLuft(); hentVaer(); }, CONFIG.oppdaterMs);
 
 /* ---------- Intern besøksteller (KUN interne skjermer) ----------
    Vises KUN når "intern=1" finnes i URL-en akkurat nå. Sjekker HELE (dekodede)
